@@ -22,7 +22,7 @@ class FrameSequenceBg implements IEffect {
     for (let i = 1; i < length - 1; i++) {
       allValues.push(i);
     }
-    return [0, length, ...this.generateFrameLoadOrderLoop_(allValues)];
+    return [0, length - 1, ...this.generateFrameLoadOrderLoop_(allValues)];
   }
 
   private static generateFrameLoadOrderLoop_(remaining: number[]): number[] {
@@ -30,9 +30,9 @@ class FrameSequenceBg implements IEffect {
       return remaining;
     }
 
-    const middle = Math.floor(remaining.length / 2);
+    const middle = Math.floor((remaining.length - 1) / 2);
     const left = remaining.slice(0, middle);
-    const right = remaining.slice(middle + 2);
+    const right = remaining.slice(middle + 1);
     return [
       remaining[middle],
       ...flatten(
