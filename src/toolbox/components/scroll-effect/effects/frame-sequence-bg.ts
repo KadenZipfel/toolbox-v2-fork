@@ -1,6 +1,5 @@
 import {renderLoop} from "../../../utils/render-loop";
 import {IEffect} from "./i-effect";
-import {setStyle} from "../../../utils/dom/style/set-style";
 import {percentToIndex} from "../../../utils/array/percent-to-index";
 import {flatten} from "../../../utils/array/flatten";
 import {zip} from "../../../utils/array/zip";
@@ -21,6 +20,7 @@ const DEFAULT_FRAME_STYLE = `
 `;
 
 class FrameSequenceBg implements IEffect {
+  private readonly loadedImages_: Set<HTMLImageElement>;
   private readonly imageUrlsInOrder_: string[];
   private readonly framesToLoadInOrder_: number[];
   private readonly loadedFrames_: Set<number>;
@@ -45,6 +45,7 @@ class FrameSequenceBg implements IEffect {
     this.backFrame_ = document.createElement('div');
     this.frontFrame_ = document.createElement('div');
     this.container_ = container;
+    this.loadedImages_ = new Set();
 
     this.init_();
   }
@@ -80,7 +81,8 @@ class FrameSequenceBg implements IEffect {
       this.framesToLoadInOrder_[this.framesToLoadInOrderIndex_];
     const frameUrl = this.imageUrlsInOrder_[frameToLoad];
     loadImage(frameUrl)
-      .then(() => {
+      .then((loadedImage) => {
+        this.loadedImages_.add(loadedImage); // Keep image in memory
         this.framesToLoadInOrderIndex_++;
         this.loadNextImage_();
         this.loadedFrames_.add(frameToLoad);
@@ -181,7 +183,10 @@ class FrameSequenceBg implements IEffect {
       });
   }
 
-  destroy() {}
+  destroy() {
+    this.loadedImages_.clear();
+    this.loadedFrames_.clear();
+  }
 }
 
 export {FrameSequenceBg}

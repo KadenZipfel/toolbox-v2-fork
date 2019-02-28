@@ -3,11 +3,11 @@
  * @param imageUrl The URL of the image to load.
  * @return Promise that resolves when the image loads. Rejects on error.
  */
-function loadImage(imageUrl: string): Promise<void> {
+function loadImage(imageUrl: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
-    image.addEventListener('load', () => resolve(), {once: true});
-    image.addEventListener('error', () => reject(), {once: true});
+    image.addEventListener('load', () => resolve(image), {once: true});
+    image.addEventListener('error', () => reject(image), {once: true});
     image.src = imageUrl;
   });
 }
