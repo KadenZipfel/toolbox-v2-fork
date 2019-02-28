@@ -88,9 +88,24 @@ class Sticky {
     const shouldPin = new NumericRange(0, maxDistance).contains(-yPosition);
     const position = this.getPosition_(shouldPin, yPosition);
     const windowDimensions = Dimensions2d.fromInnerWindow();
+    const targetOffsetTop = this.target_.offsetTop;
+
+    // Ensure cached values are updated even if there's an early exit
+    // Will update before the next loop but not before the current loop is
+    // completed.
+    renderLoop.scrollPremeasure(() => {
+      this.lastPosition_ = position;
+      this.lastWindowDimensions_ = windowDimensions;
+    });
 
     // Skip duplicating work
-    if (this.lastPosition_ === position) {
+    if (
+      this.lastPosition_ === position &&
+      (
+        position === ContainerPosition.TOP ||
+        this.lastWindowDimensions_.equals(windowDimensions)
+      )
+    ) {
       return;
     }
 
@@ -98,61 +113,62 @@ class Sticky {
     if (position === ContainerPosition.TOP) {
       this.positionTop_();
     }
-    else {
-      if (
-        this.lastPosition_ !== ContainerPosition.TOP ||
-        !this.lastWindowDimensions_.equals(windowDimensions)
-      ) {
+    else if (position === ContainerPosition.BOTTOM) {
+      this.positionBottom_(targetOffsetTop, maxDistance);
+    }
+    else if (position === ContainerPosition.MIDDLE) {
+      if (!this.lastWindowDimensions_.equals(windowDimensions)) {
         this.positionTop_(); // Necessary thrashing. :(
       }
 
-      const oldPositionFromContainer =
-        getVisibleDistanceBetweenElements(this.target_, this.container_);
       const oldPositionFromWindow =
         getVisibleDistanceFromRoot(this.target_);
       const originalSizing = Dimensions2d.fromElementOffset(this.target_);
-
-
-      if (position === ContainerPosition.MIDDLE) {
-        this.positionMiddle_();
-      }
-      else if (position === ContainerPosition.BOTTOM) {
-        this.positionBottom_();
-      }
-
-      // More necessary thrashing :(
-      const newPositionFromWindow =
-        getVisibleDistanceFromRoot(this.target_);
-
       const desiredPositionFromWindow =
-        new Vector2d(oldPositionFromWindow.x, oldPositionFromContainer.y);
-      const finalAdjustment =
-        newPositionFromWindow.subtract(desiredPositionFromWindow);
+        new Vector2d(oldPositionFromWindow.x, 0);
 
       // Avoid thrashing the final update
       renderLoop.scrollMutate(() => {
-        finalAdjustment.positionElementByTranslation(this.target_);
+        this.positionMiddle_(targetOffsetTop);
+        desiredPositionFromWindow.positionElementByTranslation(this.target_);
         originalSizing.sizeElement(this.target_);
       });
     }
-
-    this.lastPosition_ = position;
-    this.lastWindowDimensions_ = windowDimensions;
   }
 
   private positionTop_(): void {
+    renderLoop.scrollMutate(() => {
+      this.clearStyles_();
+    });
+  }
+
+  private positionMiddle_(targetOffsetTop: number): void {
+    this.clearStyles_();
+    this.target_.style.position = 'fixed';
+    this.target_.style.margin = '0';
+    this.target_.style.marginTop = `${targetOffsetTop}px`;
+    this.target_.style.top = '0';
+    this.target_.style.left = '0';
+  }
+
+  private positionBottom_(targetOffsetTop: number, maxDistance: number): void {
+    renderLoop.scrollMutate(() => {
+      this.clearStyles_();
+      this.target_.style.transform =
+        `translateY(${maxDistance - targetOffsetTop}px)`;
+      this.target_.style.marginTop = `${targetOffsetTop}px`;
+    });
+  }
+
+  private clearStyles_() {
     this.target_.style.position = '';
     this.target_.style.width = '';
     this.target_.style.height = '';
     this.target_.style.transform = '';
-  }
-
-  private positionMiddle_(): void {
-    this.target_.style.position = 'fixed';
-  }
-
-  private positionBottom_(): void {
-    this.target_.style.position = 'absolute';
+    this.target_.style.margin = '';
+    this.target_.style.marginTop = '';
+    this.target_.style.top = '';
+    this.target_.style.left = '';
   }
 
   public destroy() {
