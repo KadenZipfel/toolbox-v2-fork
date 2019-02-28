@@ -1,7 +1,11 @@
 import {NumericRange} from "../../utils/math/numeric-range";
 import {getVisibleYPosition} from "../../utils/dom/position/vertical/get-visible-y-position";
 import {renderLoop} from "../../utils/render-loop";
-import {getOffsetFromAncestor} from "../../utils/dom/position/get-offset-from-ancestor";
+import {getVisibleDistanceFromRoot} from "../../utils/dom/position/get-visible-distance-from-root";
+import {Vector2d} from "../../utils/math/geometry/vector-2d";
+import {getVisibleDistanceBetweenElements} from "../../utils/dom/position/get-visible-distance-between-elements";
+import {Scroll} from "../../utils/cached-vectors/scroll";
+import {Dimensions2d} from "../../utils/math/geometry/dimensions-2d";
 
 /**
  * Positions the the element could be sticking to within the container.
@@ -26,6 +30,7 @@ class Sticky {
   private readonly target_: HTMLElement;
   private destroyed_: boolean;
   private lastPosition_: Symbol;
+  private lastWindowDimensions_: Dimensions2d;
 
   /**
    * @param target The Element to position as if it were "position: sticky"'d
@@ -40,6 +45,7 @@ class Sticky {
     this.target_ = target;
     this.lastPosition_ = null;
     this.destroyed_ = false;
+    this.lastWindowDimensions_ = Dimensions2d.fromInnerWindow();
     this.init_();
   }
 
@@ -81,43 +87,72 @@ class Sticky {
       this.target_.offsetTop;
     const shouldPin = new NumericRange(0, maxDistance).contains(-yPosition);
     const position = this.getPosition_(shouldPin, yPosition);
-    const containerXOffset: number =
-      getOffsetFromAncestor(this.container_, null).x;
+    const windowDimensions = Dimensions2d.fromInnerWindow();
 
     // Skip duplicating work
     if (this.lastPosition_ === position) {
       return;
     }
 
-    renderLoop.scrollMutate(() => {
-      // Determine if the target should stick
-      if (position === ContainerPosition.TOP) {
-        this.positionTop_();
-      }
-      else if (position === ContainerPosition.MIDDLE) {
-        this.positionMiddle_(containerXOffset);
-      }
-      else if (position === ContainerPosition.BOTTOM) {
-        this.positionBottom_(maxDistance);
+    // Determine if the target should stick
+    if (position === ContainerPosition.TOP) {
+      this.positionTop_();
+    }
+    else {
+      if (
+        this.lastPosition_ !== ContainerPosition.TOP ||
+        !this.lastWindowDimensions_.equals(windowDimensions)
+      ) {
+        this.positionTop_(); // Necessary thrashing. :(
       }
 
-      this.lastPosition_ = position;
-    });
+      const oldPositionFromContainer =
+        getVisibleDistanceBetweenElements(this.target_, this.container_);
+      const oldPositionFromWindow =
+        getVisibleDistanceFromRoot(this.target_);
+      const originalSizing = Dimensions2d.fromElementOffset(this.target_);
+
+
+      if (position === ContainerPosition.MIDDLE) {
+        this.positionMiddle_();
+      }
+      else if (position === ContainerPosition.BOTTOM) {
+        this.positionBottom_();
+      }
+
+      // More necessary thrashing :(
+      const newPositionFromWindow =
+        getVisibleDistanceFromRoot(this.target_);
+
+      const desiredPositionFromWindow =
+        new Vector2d(oldPositionFromWindow.x, oldPositionFromContainer.y);
+      const finalAdjustment =
+        newPositionFromWindow.subtract(desiredPositionFromWindow);
+
+      // Avoid thrashing the final update
+      renderLoop.scrollMutate(() => {
+        finalAdjustment.positionElementByTranslation(this.target_);
+        originalSizing.sizeElement(this.target_);
+      });
+    }
+
+    this.lastPosition_ = position;
+    this.lastWindowDimensions_ = windowDimensions;
   }
 
   private positionTop_(): void {
     this.target_.style.position = '';
+    this.target_.style.width = '';
+    this.target_.style.height = '';
     this.target_.style.transform = '';
   }
 
-  private positionMiddle_(containerXOffset: number): void {
+  private positionMiddle_(): void {
     this.target_.style.position = 'fixed';
-    this.target_.style.transform = `translateX(${containerXOffset}px)`;
   }
 
-  private positionBottom_(maxDistance: number): void {
+  private positionBottom_(): void {
     this.target_.style.position = 'absolute';
-    this.target_.style.transform = `translateY(${maxDistance}px)`;
   }
 
   public destroy() {
