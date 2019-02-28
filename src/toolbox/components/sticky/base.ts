@@ -40,17 +40,14 @@ class Sticky {
       return;
     }
 
-    renderLoop.scrollMeasure(() => this.measure_());
+    renderLoop.scrollMeasure(() => {
+      renderLoop.scrollCleanup(() => this.renderLoop_());
+      this.measure_();
+    });
   }
 
   // Split out so it can be run on initial load
   private measure_(): void {
-    if (this.destroyed_) {
-      return;
-    }
-
-    renderLoop.scrollCleanup(() => this.renderLoop_());
-
     const yPosition: number = getVisibleYPosition(this.container_);
     const maxDistance: number =
       this.container_.offsetHeight -

@@ -63,7 +63,6 @@ class RenderLoop {
   private currentRun_: Date;
   private msPerFrame_: number;
   private scheduledFns_: DynamicDefaultMap<symbol, RenderFunctionMap>;
-  private scrolledSinceLastFrame_: boolean;
 
   constructor() {
     this.scheduledFns_ =
@@ -71,7 +70,6 @@ class RenderLoop {
         .usingFunction<symbol, RenderFunctionMap>(
           (unused: symbol) => new Map<RenderFunctionID, RenderFunction>());
     this.msPerFrame_ = 33; // Default to 30fps
-    this.scrolledSinceLastFrame_ = false;
     this.lastRun_ = new Date();
     window.addEventListener('scroll', () => this.runScrollLoop_());
     this.runScrollLoop_();
