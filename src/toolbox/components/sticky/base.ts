@@ -2,6 +2,55 @@ import {NumericRange} from "../../utils/math/numeric-range";
 import {getVisibleYPosition} from "../../utils/dom/position/vertical/get-visible-y-position";
 import {renderLoop} from "../../utils/render-loop";
 import {getOffsetFromAncestor} from "../../utils/dom/position/get-offset-from-ancestor";
+import {Vector2d} from "../../utils/math/geometry/vector-2d";
+import {Dimensions2d} from "../../utils/math/geometry/dimensions-2d";
+
+/**
+ * TODO(Angus)
+ *
+ * Use the target's computed style and apply it as inline styles to a div.
+ * Stick that div into the container in place of the target when the target is fixed.
+ * Remove that div from the container when the target stops being fixed.
+ * This should keep the container's sizing constant.
+ *
+ * Translate the element based on the
+ *
+ * .... screw all that.
+ *
+ *
+ * Here's the new rules:
+ *
+ * Container size should be independent of the Sticky element.
+ * Which is to say that if the sticky element can change the computed style of
+ * its container, this component WILL NOT WORK.
+ *
+ * On load add a fixed div that per-frame matches the dimensions of the
+ * given container. Fixed div will stay fixed at top: 0 and left: 0 but will
+ * apply a translateX to match the left edge of the container.
+ *
+ * When in the MIDDLE position, append the target to the fixed div.
+ * In other positions append the target to the original parent.
+ *
+ * Remove the need to specify the container, assume it is always the offsetParent
+ * of the target.
+ *
+ * WON'T WORK. STICKY KEEPS OTHER ELEMENTS IN FLOW, SO WE HAVE TO KEEP THEM IN FLOW.
+ *
+ *
+ * NEW NEW PLAN: !!!!!
+ *
+ * Clone target. Place clone in-place of target with visibility: hidden
+ *
+ * Keep clone inner-html up to date per frame.
+ *
+ * Position target absolutely. Use left-right to keep it on top of clone.
+ *
+ * When in MIDDLE position it fixed and match the width/height to the clone.
+ *
+ * Should prevent emergency thrashing and provide a basis to pull MIDDLE values
+ * from.
+ *
+ */
 
 /**
  * Positions the the element could be sticking to within the container.
@@ -26,6 +75,10 @@ class Sticky {
   private readonly target_: HTMLElement;
   private destroyed_: boolean;
   private lastPosition_: Symbol;
+  private lastWindowDimensions_: Dimensions2d;
+  private lastContainerDimensions_: Dimensions2d;
+  private appliedVector_: Vector2d;
+  private cachedTargetOffsetTop_: number;
 
   /**
    * @param target The Element to position as if it were "position: sticky"'d
@@ -40,6 +93,10 @@ class Sticky {
     this.target_ = target;
     this.lastPosition_ = null;
     this.destroyed_ = false;
+    this.appliedVector_ = new Vector2d(0, 0);
+    this.lastWindowDimensions_ = Dimensions2d.fromInnerWindow();
+    this.lastContainerDimensions_ = Dimensions2d.fromElementOffset(container);
+    this.cachedTargetOffsetTop_ = this.target_.offsetTop;
     this.init_();
   }
 
@@ -53,7 +110,10 @@ class Sticky {
       return;
     }
 
-    renderLoop.scrollMeasure(() => this.measure_());
+    renderLoop.scrollMeasure(() => {
+      renderLoop.scrollCleanup(() => this.renderLoop_());
+      this.measure_()
+    });
   }
 
   private getPosition_(shouldPin: boolean, yPosition: number): Symbol {
@@ -68,17 +128,23 @@ class Sticky {
 
   // Split out so it can be run on initial load
   private measure_(): void {
-    if (this.destroyed_) {
-      return;
-    }
+    const windowDimensions_ = Dimensions2d.fromInnerWindow();
+    const containerDimensions_ =
+      Dimensions2d.fromElementOffset(this.container_);
 
-    renderLoop.scrollCleanup(() => this.renderLoop_());
+    if (
+      windowDimensions_ != this.lastWindowDimensions_ ||
+      containerDimensions_ != this.lastContainerDimensions_
+    ) {
+      this.clearInlineStyles_();
+      this.cachedTargetOffsetTop_ = this.target_.offsetTop;
+    }
 
     const yPosition: number = getVisibleYPosition(this.container_);
     const maxDistance: number =
       this.container_.offsetHeight -
       this.target_.offsetHeight -
-      this.target_.offsetTop;
+      this.cachedTargetOffsetTop_;
     const shouldPin = new NumericRange(0, maxDistance).contains(-yPosition);
     const position = this.getPosition_(shouldPin, yPosition);
     const containerXOffset: number =
@@ -105,9 +171,13 @@ class Sticky {
     });
   }
 
-  private positionTop_(): void {
+  private clearInlineStyles_(): void {
     this.target_.style.position = '';
     this.target_.style.transform = '';
+  }
+
+  private positionTop_(): void {
+    this.clearInlineStyles_();
   }
 
   private positionMiddle_(containerXOffset: number): void {
