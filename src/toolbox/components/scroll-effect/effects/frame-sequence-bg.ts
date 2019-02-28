@@ -81,12 +81,17 @@ class FrameSequenceBg implements IEffect {
       this.framesToLoadInOrder_[this.framesToLoadInOrderIndex_];
     const frameUrl = this.imageUrlsInOrder_[frameToLoad];
     loadImage(frameUrl)
-      .then((loadedImage) => {
-        this.loadedImages_.add(loadedImage); // Keep image in memory
-        this.framesToLoadInOrderIndex_++;
-        this.loadNextImage_();
-        this.loadedFrames_.add(frameToLoad);
-      });
+      .then(
+        (loadedImage) => {
+          this.loadedImages_.add(loadedImage); // Keep image in memory
+          this.framesToLoadInOrderIndex_++;
+          this.loadedFrames_.add(frameToLoad);
+          this.loadNextImage_();
+        },
+        () => {
+          this.framesToLoadInOrderIndex_++;
+          this.loadNextImage_();
+        });
   }
 
   public static generateFrameLoadOrder(length: number): number[] {
