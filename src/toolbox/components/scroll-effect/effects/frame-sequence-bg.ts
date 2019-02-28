@@ -4,17 +4,87 @@ import {setStyle} from "../../../utils/dom/style/set-style";
 import {percentToIndex} from "../../../utils/array/percent-to-index";
 import {flatten} from "../../../utils/array/flatten";
 import {zip} from "../../../utils/array/zip";
+import {loadImage} from "../../../utils/loading/load-image";
+import {styleStringToMap} from "../../../utils/dom/style/style-string-to-map";
+import {setStylesFromMap} from "../../../utils/dom/style/set-styles-from-map";
+import {min} from "../../../utils/array/min";
+import {NumericRange} from "../../../utils/math/numeric-range";
+
+const DEFAULT_FRAME_STYLE = `
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+`;
 
 class FrameSequenceBg implements IEffect {
   private readonly imageUrlsInOrder_: string[];
-  private readonly loadedImageUrlIndices_: Set<number>;
-  private readonly indicesToLoadInOrder_: number[];
+  private readonly framesToLoadInOrder_: number[];
+  private readonly loadedFrames_: Set<number>;
+  private readonly container_: HTMLElement;
+  private readonly backFrame_: HTMLElement;
+  private readonly frontFrame_: HTMLElement;
+  private framesToLoadInOrderIndex_: number;
 
-  constructor(frames: string[]) {
+  /**
+   * @param frames In order list of image URLs representing a sequence.
+   * @param container Non-statically positioned HTML element to contain frames.
+   *
+   * Inner frames are positioned absolutely, so the container should be
+   * positioned using fixed, absolute or relative.
+   */
+  constructor(frames: string[], container: HTMLElement) {
     this.imageUrlsInOrder_ = frames;
-    this.loadedImageUrlIndices_ = new Set<number>();
-    this.indicesToLoadInOrder_ =
+    this.framesToLoadInOrder_ =
       FrameSequenceBg.generateFrameLoadOrder(frames.length);
+    this.framesToLoadInOrderIndex_ = 0;
+    this.loadedFrames_ = new Set<number>();
+    this.backFrame_ = document.createElement('div');
+    this.frontFrame_ = document.createElement('div');
+    this.container_ = container;
+
+    this.init_();
+  }
+
+  private init_() {
+    this.setupFrames_();
+    this.startLoadingImages_();
+  }
+
+  private getFrames_() {
+    return [this.backFrame_, this.frontFrame_];
+  }
+
+  private setupFrames_() {
+    const defaultStyles = styleStringToMap(DEFAULT_FRAME_STYLE);
+    this.getFrames_()
+      .forEach((frame) => {
+        setStylesFromMap(frame, defaultStyles);
+        this.container_.appendChild(frame);
+      });
+  }
+
+  private startLoadingImages_() {
+    this.loadNextImage_();
+  }
+
+  private loadNextImage_() {
+    if (this.framesToLoadInOrderIndex_ >= this.framesToLoadInOrder_.length) {
+      return; // We've loaded everything, let's chill.
+    }
+
+    const frameToLoad =
+      this.framesToLoadInOrder_[this.framesToLoadInOrderIndex_];
+    const frameUrl = this.imageUrlsInOrder_[frameToLoad];
+    loadImage(frameUrl)
+      .then(() => {
+        this.framesToLoadInOrderIndex_++;
+        this.loadNextImage_();
+        this.loadedFrames_.add(frameToLoad);
+      });
   }
 
   public static generateFrameLoadOrder(length: number): number[] {
@@ -44,13 +114,71 @@ class FrameSequenceBg implements IEffect {
     ];
   }
 
+  private getPreviousLoadedFrame_(targetFrame: number): number {
+    return this.getClosestFrame_(
+      this.getPreviousLoadedFrames_(targetFrame), targetFrame);
+  }
+
+  private getPreviousLoadedFrames_(targetFrame: number): number[] {
+    return this.getLoadedFramesByCondition_((frame) => frame < targetFrame);
+  }
+
+  private getNextLoadedFrame_(targetFrame: number): number {
+    return this.getClosestFrame_(
+      this.getNextLoadedFrames_(targetFrame), targetFrame);
+  }
+
+  private getClosestFrame_(
+    candidateFrames: number[], targetFrame: number
+  ): number {
+    return min(candidateFrames, (frame) => Math.abs(targetFrame - frame));
+  }
+
+  private getNextLoadedFrames_(targetFrame: number): number[] {
+    return this.getLoadedFramesByCondition_((frame) => frame > targetFrame);
+  }
+
+  private getLoadedFramesByCondition_(condition: (v: number) => boolean) {
+    return Array.from(this.loadedFrames_).filter(condition);
+  }
+
   public run(
     target: HTMLElement, distance: number, distanceAsPercent: number
   ): void {
-    const frame = percentToIndex(distanceAsPercent, this.imageUrlsInOrder_);
-    renderLoop.mutate(
-      () => setStyle(
-        target, 'background-image', `url(${this.imageUrlsInOrder_[frame]})`));
+    const targetFrame =
+      percentToIndex(distanceAsPercent, this.imageUrlsInOrder_);
+
+    const backFrameStyles = new Map<string, string>();
+    const frontFrameStyles = new Map<string, string>();
+
+    if (this.loadedFrames_.has(targetFrame)) {
+      frontFrameStyles
+        .set('background-image', `url(${this.imageUrlsInOrder_[targetFrame]})`);
+      backFrameStyles.set('background-image', 'none');
+      frontFrameStyles.set('opacity', '1');
+      backFrameStyles.set('opacity', '0');
+    } else {
+      const frontFrame = this.getNextLoadedFrame_(targetFrame);
+      const backFrame = this.getPreviousLoadedFrame_(targetFrame);
+      const frontFramePercent = frontFrame / this.imageUrlsInOrder_.length;
+      const backFramePercent = backFrame / this.imageUrlsInOrder_.length;
+      const percentageRange =
+        new NumericRange(backFramePercent, frontFramePercent);
+      const opacitySplit = percentageRange.getValueAsPercent(distanceAsPercent);
+
+      frontFrameStyles
+        .set('background-image', `url(${this.imageUrlsInOrder_[frontFrame]})`);
+      backFrameStyles
+        .set('background-image', `url(${this.imageUrlsInOrder_[backFrame]})`);
+      frontFrameStyles.set('opacity', '' + (opacitySplit));
+      backFrameStyles.set('opacity', '' + (1 - opacitySplit));
+    }
+
+    renderLoop.scrollMutate(
+      () => {
+        setStylesFromMap(this.backFrame_, backFrameStyles);
+        setStylesFromMap(this.frontFrame_, frontFrameStyles);
+      });
   }
 
   destroy() {}
