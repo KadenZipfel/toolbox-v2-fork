@@ -4,6 +4,9 @@ import {renderLoop} from "../../utils/render-loop";
 import {getOffsetFromAncestor} from "../../utils/dom/position/get-offset-from-ancestor";
 import {Vector2d} from "../../utils/math/geometry/vector-2d";
 import {Dimensions2d} from "../../utils/math/geometry/dimensions-2d";
+import {getVisibleDistanceBetweenElements} from "../../utils/dom/position/get-visible-distance-between-elements";
+import {getVisibleDistanceFromRoot} from "../../utils/dom/position/get-visible-distance-from-root";
+import {getCommonOffsetAncestor} from "../../utils/dom/position/get-common-offset-ancestor";
 
 /**
  * TODO(Angus)
@@ -73,12 +76,10 @@ class ContainerPosition {
 class Sticky {
   private readonly container_: HTMLElement;
   private readonly target_: HTMLElement;
+  private readonly clone_: HTMLElement;
+  private commonOffsetAncestor_: HTMLElement;
   private destroyed_: boolean;
   private lastPosition_: Symbol;
-  private lastWindowDimensions_: Dimensions2d;
-  private lastContainerDimensions_: Dimensions2d;
-  private appliedVector_: Vector2d;
-  private cachedTargetOffsetTop_: number;
 
   /**
    * @param target The Element to position as if it were "position: sticky"'d
@@ -93,14 +94,24 @@ class Sticky {
     this.target_ = target;
     this.lastPosition_ = null;
     this.destroyed_ = false;
-    this.appliedVector_ = new Vector2d(0, 0);
-    this.lastWindowDimensions_ = Dimensions2d.fromInnerWindow();
-    this.lastContainerDimensions_ = Dimensions2d.fromElementOffset(container);
-    this.cachedTargetOffsetTop_ = this.target_.offsetTop;
+    this.clone_ = document.createElement(target.tagName);
+    this.commonOffsetAncestor_ = null;
     this.init_();
   }
 
   private init_(): void {
+    this.clone_.innerHTML = this.target_.innerHTML;
+    this.clone_.style.visibility = 'hidden';
+    this.target_.style.position = 'absolute';
+    this.target_.style.top = '0';
+    this.target_.style.left = '0';
+    this.target_.style.width = '';
+    this.target_.style.height = '';
+    this.target_.style.margin = '0';
+    this.target_.style.padding = '0';
+    this.commonOffsetAncestor_ =
+      getCommonOffsetAncestor(this.clone_, this.target_);
+
     this.measure_();
     this.renderLoop_();
   }
@@ -116,7 +127,7 @@ class Sticky {
     });
   }
 
-  private getPosition_(shouldPin: boolean, yPosition: number): Symbol {
+  private static getPosition_(shouldPin: boolean, yPosition: number): Symbol {
     if (shouldPin) {
       return ContainerPosition.MIDDLE;
     } else if (yPosition < 0) {
@@ -128,27 +139,19 @@ class Sticky {
 
   // Split out so it can be run on initial load
   private measure_(): void {
-    const windowDimensions_ = Dimensions2d.fromInnerWindow();
-    const containerDimensions_ =
-      Dimensions2d.fromElementOffset(this.container_);
-
-    if (
-      windowDimensions_ != this.lastWindowDimensions_ ||
-      containerDimensions_ != this.lastContainerDimensions_
-    ) {
-      this.clearInlineStyles_();
-      this.cachedTargetOffsetTop_ = this.target_.offsetTop;
-    }
-
     const yPosition: number = getVisibleYPosition(this.container_);
     const maxDistance: number =
       this.container_.offsetHeight -
-      this.target_.offsetHeight -
-      this.cachedTargetOffsetTop_;
+      this.clone_.offsetHeight -
+      this.clone_.offsetTop;
     const shouldPin = new NumericRange(0, maxDistance).contains(-yPosition);
-    const position = this.getPosition_(shouldPin, yPosition);
-    const containerXOffset: number =
-      getOffsetFromAncestor(this.container_, null).x;
+    const position = Sticky.getPosition_(shouldPin, yPosition);
+
+    const cloneDistanceFromAncestor =
+      getVisibleDistanceBetweenElements(this.clone_, this.commonOffsetAncestor_);
+    const cloneDistanceFromRoot = getVisibleDistanceFromRoot(this.clone_);
+    const cloneStyle = window.getComputedStyle(this.clone_);
+
 
     // Skip duplicating work
     if (this.lastPosition_ === position) {
@@ -156,38 +159,38 @@ class Sticky {
     }
 
     renderLoop.scrollMutate(() => {
+      this.applyCloneStylesToTarget_(cloneStyle);
+
       // Determine if the target should stick
       if (position === ContainerPosition.TOP) {
-        this.positionTop_();
+        this.target_.style.position = 'absolute';
+        cloneDistanceFromAncestor.positionElementByTranslation(this.target_);
       }
       else if (position === ContainerPosition.MIDDLE) {
-        this.positionMiddle_(containerXOffset);
+        this.target_.style.position = 'fixed';
+        cloneDistanceFromRoot.positionElementByTranslation(this.target_);
       }
       else if (position === ContainerPosition.BOTTOM) {
-        this.positionBottom_(maxDistance);
+        this.target_.style.position = 'absolute';
+        cloneDistanceFromAncestor
+          .add(new Vector2d(0, maxDistance))
+          .positionElementByTranslation(this.target_);
       }
 
       this.lastPosition_ = position;
     });
   }
 
-  private clearInlineStyles_(): void {
-    this.target_.style.position = '';
-    this.target_.style.transform = '';
-  }
-
-  private positionTop_(): void {
-    this.clearInlineStyles_();
-  }
-
-  private positionMiddle_(containerXOffset: number): void {
-    this.target_.style.position = 'fixed';
-    this.target_.style.transform = `translateX(${containerXOffset}px)`;
-  }
-
-  private positionBottom_(maxDistance: number): void {
-    this.target_.style.position = 'absolute';
-    this.target_.style.transform = `translateY(${maxDistance}px)`;
+  private applyCloneStylesToTarget_(cloneStyles: CSSStyleDeclaration): void {
+    this.target_.style.margin = '0';
+    this.target_.style.top = '0';
+    this.target_.style.bottom = '0';
+    this.target_.style.left = '0';
+    this.target_.style.right = '0';
+    this.target_.style.padding = cloneStyles.padding;
+    this.target_.style.width = cloneStyles.width;
+    this.target_.style.height = cloneStyles.height;
+    this.target_.style.border = cloneStyles.border;
   }
 
   public destroy() {
