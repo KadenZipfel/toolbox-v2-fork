@@ -170,7 +170,8 @@ class Sticky {
       }
       else if (position === ContainerPosition.MIDDLE) {
         this.target_.style.position = 'fixed';
-        cloneDistanceFromRoot.positionElementByTranslation(this.target_);
+        new Vector2d(cloneDistanceFromRoot.x, cloneDistanceFromFrame.y)
+          .positionElementByTranslation(this.target_);
       }
       else if (position === ContainerPosition.BOTTOM) {
         this.target_.style.position = 'absolute';
