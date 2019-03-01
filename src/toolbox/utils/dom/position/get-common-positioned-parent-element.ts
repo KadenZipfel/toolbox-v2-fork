@@ -7,8 +7,10 @@ function getCommonPositionedParentElement(
 ): HTMLElement {
   const reversedAncestorLists: HTMLElement[][] =
     elements
-      .map((element) => getParentElements(element).filter(isPositioned))
-      .reverse();
+      .map(
+        (element) => {
+          return getParentElements(element).filter(isPositioned).reverse();
+        });
   const ancestorIndex: number = getLastMatchingIndex(...reversedAncestorLists);
   return reversedAncestorLists[0][ancestorIndex];
 }
