@@ -7,6 +7,7 @@ import {Dimensions2d} from "../../utils/math/geometry/dimensions-2d";
 import {getVisibleDistanceBetweenElements} from "../../utils/dom/position/get-visible-distance-between-elements";
 import {getVisibleDistanceFromRoot} from "../../utils/dom/position/get-visible-distance-from-root";
 import {getCommonOffsetAncestor} from "../../utils/dom/position/get-common-offset-ancestor";
+import {getCommonPositionedParentElement} from "../../utils/dom/position/get-common-positioned-parent-element";
 
 /**
  * TODO(Angus)
@@ -77,7 +78,6 @@ class Sticky {
   private readonly container_: HTMLElement;
   private readonly target_: HTMLElement;
   private readonly clone_: HTMLElement;
-  private commonOffsetAncestor_: HTMLElement;
   private destroyed_: boolean;
   private lastPosition_: Symbol;
 
@@ -95,13 +95,15 @@ class Sticky {
     this.lastPosition_ = null;
     this.destroyed_ = false;
     this.clone_ = document.createElement(target.tagName);
-    this.commonOffsetAncestor_ = null;
     this.init_();
   }
 
   private init_(): void {
     this.clone_.innerHTML = this.target_.innerHTML;
     this.clone_.style.visibility = 'hidden';
+    Array.from(this.target_.classList)
+      .forEach((className) => this.clone_.classList.add(className));
+    this.container_.appendChild(this.clone_);
     this.target_.style.position = 'absolute';
     this.target_.style.top = '0';
     this.target_.style.left = '0';
@@ -109,8 +111,6 @@ class Sticky {
     this.target_.style.height = '';
     this.target_.style.margin = '0';
     this.target_.style.padding = '0';
-    this.commonOffsetAncestor_ =
-      getCommonOffsetAncestor(this.clone_, this.target_);
 
     this.measure_();
     this.renderLoop_();
@@ -147,8 +147,10 @@ class Sticky {
     const shouldPin = new NumericRange(0, maxDistance).contains(-yPosition);
     const position = Sticky.getPosition_(shouldPin, yPosition);
 
-    const cloneDistanceFromAncestor =
-      getVisibleDistanceBetweenElements(this.clone_, this.commonOffsetAncestor_);
+    const commonFrame =
+      getCommonPositionedParentElement(this.clone_, this.target_);
+    const cloneDistanceFromFrame =
+      getVisibleDistanceBetweenElements(this.clone_, commonFrame);
     const cloneDistanceFromRoot = getVisibleDistanceFromRoot(this.clone_);
     const cloneStyle = window.getComputedStyle(this.clone_);
 
@@ -164,7 +166,7 @@ class Sticky {
       // Determine if the target should stick
       if (position === ContainerPosition.TOP) {
         this.target_.style.position = 'absolute';
-        cloneDistanceFromAncestor.positionElementByTranslation(this.target_);
+        cloneDistanceFromFrame.positionElementByTranslation(this.target_);
       }
       else if (position === ContainerPosition.MIDDLE) {
         this.target_.style.position = 'fixed';
@@ -172,7 +174,7 @@ class Sticky {
       }
       else if (position === ContainerPosition.BOTTOM) {
         this.target_.style.position = 'absolute';
-        cloneDistanceFromAncestor
+        cloneDistanceFromFrame
           .add(new Vector2d(0, maxDistance))
           .positionElementByTranslation(this.target_);
       }
