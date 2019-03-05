@@ -136,6 +136,10 @@ class PhysicalSlide implements ITransition {
       if (!carousel.isBeingInteractedWith()) {
         if (this.transitionTargets_.has(carousel)) {
           this.transitionToTarget_(carousel);
+        } else if (
+          !this.hasTransitionedTo(this.getActiveSlide(carousel), carousel)
+        ) {
+          carousel.transitionToSlide(this.getActiveSlide(carousel));
         } else {
           this.adjustSplit_(carousel);
         }
