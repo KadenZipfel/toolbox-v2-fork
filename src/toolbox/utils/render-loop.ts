@@ -38,6 +38,7 @@ class RenderLoop {
 
   private lastRun_: Date;
   private currentRun_: Date;
+  private msPerFrame_: number;
   private scheduledFns_: DynamicDefaultMap<symbol, RenderFunctionMap>;
   private running_: boolean;
 
@@ -47,6 +48,7 @@ class RenderLoop {
       DynamicDefaultMap
         .usingFunction<symbol, RenderFunctionMap>(
           (unused: symbol) => new Map<RenderFunctionID, RenderFunction>());
+    this.msPerFrame_ = 33; // Default to 30fps
     this.lastRun_ = new Date();
     window.addEventListener('scroll', () => this.runLoop());
     this.runLoop();
@@ -82,6 +84,22 @@ class RenderLoop {
     return renderFn;
   }
 
+  public setFps(fps: number): void {
+    this.msPerFrame_ = 1000 / fps;
+  }
+
+  public getFps(): number {
+    return 1000 / this.msPerFrame_;
+  }
+
+  public getMsPerFrame(): number {
+    return this.msPerFrame_;
+  }
+
+  public getTargetFrameLength() {
+    return this.msPerFrame_;
+  }
+
   /**
    * Runs all functions in the render loop.
    *
@@ -97,9 +115,21 @@ class RenderLoop {
     this.currentRun_ = new Date();
     this.runFns_();
     this.lastRun_ = this.currentRun_;
+    const nextRun = <number>this.currentRun_.valueOf() + this.msPerFrame_;
+    if (RenderLoop.getTimeUntilNextRun_(nextRun) > 2) {
+      setTimeout(
+        () => window.requestAnimationFrame(() => this.runLoop()),
+        RenderLoop.getTimeUntilNextRun_(nextRun));
+    } else {
+      window.requestAnimationFrame(() => this.runLoop())
+    }
     this.running_ = false;
 
     window.requestAnimationFrame(() => this.runLoop());
+  }
+
+  private static getTimeUntilNextRun_(nextRun: number): number {
+    return nextRun - <number>new Date().valueOf();
   }
 
   /**
@@ -164,22 +194,6 @@ class RenderLoop {
   public anyMutate(fn: RenderFunction): RenderFunctionID {
     console.log('"renderLoop.anyMutate" is deprecated. Please use "renderLoop.mutate" instead');
     return this.mutate(fn);
-  }
-
-  public setFps(): void {
-    console.log('Deprecated renderLoop.getFps to avoid timeouts in frame loop');
-  }
-
-  public getFps(): void {
-    console.log('Deprecated renderLoop.getFps to avoid timeouts in frame loop');
-  }
-
-  public getMsPerFrame(): void {
-    console.log('Deprecated renderLoop.getFps to avoid timeouts in frame loop');
-  }
-
-  public getTargetFrameLength(): void {
-    console.log('Deprecated renderLoop.getFps to avoid timeouts in frame loop');
   }
 }
 
