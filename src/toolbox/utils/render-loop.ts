@@ -38,20 +38,24 @@ class RenderLoop {
 
   private lastRun_: Date;
   private currentRun_: Date;
-  private msPerFrame_: number;
-  private scheduledFns_: DynamicDefaultMap<symbol, RenderFunctionMap>;
-  private running_: boolean;
+  private scheduledFns_: Map<symbol, RenderFunctionMap>;
+  private rafCallback_: number;
 
   constructor() {
-    this.running_ = false;
-    this.scheduledFns_ =
-      DynamicDefaultMap
-        .usingFunction<symbol, RenderFunctionMap>(
-          (unused: symbol) => new Map<RenderFunctionID, RenderFunction>());
-    this.msPerFrame_ = 33; // Default to 30fps
+    this.rafCallback_ = null;
+    this.scheduledFns_ = new Map<symbol, RenderFunctionMap>();
     this.lastRun_ = new Date();
+    this.init_();
+  }
+
+  private init_() {
+    // Manually setup map instead of using DynamicDefault to avoid performance
+    // overhead.
+    STEP_ORDER.forEach((step) => this.scheduledFns_.set(step, new Map()));
+
+    // Trigger updates on scroll
     window.addEventListener(
-      'scroll', () => this.runLoop(), {capture: false, passive: true});
+      'scroll', () => {this.scrollLoop_();}, {capture: false, passive: true});
     this.frameLoop_();
   }
 
@@ -92,20 +96,22 @@ class RenderLoop {
    * Calling this manually should be avoided if at all possible.
    */
   public runLoop(): void {
-    if (this.running_) {
-      return; // Prevent running the frame twice
-    }
-
-    this.running_ = true;
     this.currentRun_ = new Date();
     this.runFns_();
     this.lastRun_ = this.currentRun_;
-    this.running_ = false;
+  }
+
+  private scrollLoop_() {
+    window.cancelAnimationFrame(this.rafCallback_);
+    this.runLoop();
+    this.rafCallback_ =
+      window.requestAnimationFrame(() => {this.frameLoop_();})
   }
 
   private frameLoop_() {
     this.runLoop();
-    window.requestAnimationFrame(() => this.frameLoop_())
+    this.rafCallback_ =
+      window.requestAnimationFrame(() => {this.frameLoop_();})
   }
 
   private static getTimeUntilNextRun_(nextRun: number): number {
