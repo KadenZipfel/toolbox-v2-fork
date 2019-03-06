@@ -40,7 +40,7 @@ class CarouselTimer {
     });
   }
 
-  public pause() {
+  public pause(): void {
     if (this.paused_) {
       return;
     }
@@ -49,12 +49,12 @@ class CarouselTimer {
     this.pausedOffset_ = new Date().valueOf() - this.lastActionTime_;
   }
 
-  public stop() {
+  public stop(): void {
     this.pause();
     this.pausedOffset_ = 0;
   }
 
-  public play() {
+  public play(): void {
     if (!this.paused_) {
       return; // Makes multiple calls when playing safe
     }
@@ -62,6 +62,18 @@ class CarouselTimer {
     this.paused_ = false;
     this.pausedOffset_ = 0;
     this.startTimeout_();
+  }
+
+  public isPaused(): boolean {
+    return this.paused_;
+  }
+
+  public isPlaying(): boolean {
+    return !this.isPaused();
+  }
+
+  public isStopped(): boolean {
+    return this.isPaused() && this.pausedOffset_ === 0;
   }
 
   public destroy() {
