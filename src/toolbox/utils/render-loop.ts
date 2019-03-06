@@ -7,42 +7,15 @@ class RenderStep {
   public static readonly PHYSICS = Symbol('Physics');
   public static readonly MUTATE = Symbol('Mutate');
   public static readonly PRE_MEASURE = Symbol('Pre-measure');
-  public static readonly SCROLL_PRE_MEASURE = Symbol('Scroll-measure');
-  public static readonly SCROLL_MEASURE = Symbol('Scroll-measure');
-  public static readonly SCROLL_MUTATE = Symbol('Scroll-mutate');
-  public static readonly ANY_MUTATE = Symbol('any-mutate');
-  public static readonly SCROLL_CLEANUP = Symbol('Scroll-cleanup');
 }
 
-const ALL_STEP_ORDER: Array<symbol> = [
-  RenderStep.FRAME_COUNT,
-  RenderStep.PRE_MEASURE,
-  RenderStep.SCROLL_PRE_MEASURE,
-  RenderStep.MEASURE,
-  RenderStep.SCROLL_MEASURE,
-  RenderStep.MUTATE,
-  RenderStep.SCROLL_MUTATE,
-  RenderStep.ANY_MUTATE,
-  RenderStep.CLEANUP,
-  RenderStep.SCROLL_CLEANUP,
-];
-
-const ANIMATION_FRAME_STEP_ORDER: Array<symbol> = [
+const STEP_ORDER: Array<symbol> = [
   RenderStep.FRAME_COUNT,
   RenderStep.PRE_MEASURE,
   RenderStep.MEASURE,
   RenderStep.PHYSICS,
   RenderStep.MUTATE,
-  RenderStep.ANY_MUTATE,
   RenderStep.CLEANUP,
-];
-
-const SCROLL_STEP_ORDER: Array<symbol> = [
-  RenderStep.SCROLL_PRE_MEASURE,
-  RenderStep.SCROLL_MEASURE,
-  RenderStep.SCROLL_MUTATE,
-  RenderStep.ANY_MUTATE,
-  RenderStep.SCROLL_CLEANUP,
 ];
 
 class RenderFunctionID {
@@ -65,18 +38,17 @@ class RenderLoop {
 
   private lastRun_: Date;
   private currentRun_: Date;
-  private msPerFrame_: number;
   private scheduledFns_: DynamicDefaultMap<symbol, RenderFunctionMap>;
+  private running_: boolean;
 
   constructor() {
+    this.running_ = false;
     this.scheduledFns_ =
       DynamicDefaultMap
         .usingFunction<symbol, RenderFunctionMap>(
           (unused: symbol) => new Map<RenderFunctionID, RenderFunction>());
-    this.msPerFrame_ = 33; // Default to 30fps
     this.lastRun_ = new Date();
-    window.addEventListener('scroll', () => this.runScrollLoop());
-    this.runScrollLoop();
+    window.addEventListener('scroll', () => this.runLoop());
     this.runLoop();
   }
 
@@ -104,50 +76,10 @@ class RenderLoop {
     return this.addFnToStep_(fn, RenderStep.CLEANUP);
   }
 
-  public scrollPremeasure(fn: RenderFunction): RenderFunctionID {
-    return this.addFnToStep_(fn, RenderStep.SCROLL_PRE_MEASURE);
-  }
-
-  public scrollMeasure(fn: RenderFunction): RenderFunctionID {
-    return this.addFnToStep_(fn, RenderStep.SCROLL_MEASURE);
-  }
-
-  public scrollMutate(fn: RenderFunction): RenderFunctionID {
-    return this.addFnToStep_(fn, RenderStep.SCROLL_MUTATE);
-  }
-
-  scrollCleanup(fn: RenderFunction): RenderFunctionID {
-    return this.addFnToStep_(fn, RenderStep.SCROLL_CLEANUP);
-  }
-
-  public anyMutate(fn: RenderFunction): RenderFunctionID {
-    return this.addFnToStep_(fn, RenderStep.ANY_MUTATE);
-  }
-
-  public setFps(fps: number): void {
-    this.msPerFrame_ = 1000 / fps;
-  }
-
-  public getFps(): number {
-    return 1000 / this.msPerFrame_;
-  }
-
-  public getMsPerFrame(): number {
-    return this.msPerFrame_;
-  }
-
-  public getTargetFrameLength() {
-    return this.msPerFrame_;
-  }
-
   private addFnToStep_(fn: RenderFunction, step: symbol): RenderFunctionID {
     const renderFn = new RenderFunctionID(step);
     this.scheduledFns_.get(step).set(renderFn, fn);
     return renderFn;
-  }
-
-  private static getTimeUntilNextRun_(nextRun: number): number {
-    return nextRun - <number>new Date().valueOf();
   }
 
   /**
@@ -157,17 +89,17 @@ class RenderLoop {
    * Calling this manually should be avoided if at all possible.
    */
   public runLoop(): void {
+    if (this.running_) {
+      return; // Prevent running the frame twice
+    }
+
+    this.running_ = true;
     this.currentRun_ = new Date();
-    const nextRun = <number>this.currentRun_.valueOf() + this.msPerFrame_;
     this.runFns_();
     this.lastRun_ = this.currentRun_;
-    if (RenderLoop.getTimeUntilNextRun_(nextRun) > 2) {
-      setTimeout(
-        () => window.requestAnimationFrame(() => this.runLoop()),
-        RenderLoop.getTimeUntilNextRun_(nextRun));
-    } else {
-      window.requestAnimationFrame(() => this.runLoop())
-    }
+    this.running_ = false;
+
+    window.requestAnimationFrame(() => this.runLoop());
   }
 
   /**
@@ -181,22 +113,8 @@ class RenderLoop {
     return this.getElapsedMilliseconds() / 1000;
   }
 
-  /**
-   * Runs all functions in the scroll loop.
-   *
-   * Use with caution!
-   * Calling this manually should be avoided if at all possible.
-   */
-  public runScrollLoop(): void {
-    this.runScrollFns_();
-  }
-
-  private runScrollFns_(): void {
-    SCROLL_STEP_ORDER.forEach((step) => this.runFnsForStep_(step));
-  }
-
   private runFns_(): void {
-    ANIMATION_FRAME_STEP_ORDER.forEach((step) => this.runFnsForStep_(step));
+    STEP_ORDER.forEach((step) => this.runFnsForStep_(step));
   }
 
   private runFnsForStep_(step: symbol): void {
@@ -214,6 +132,54 @@ class RenderLoop {
 
   public static getSingleton(): RenderLoop {
     return RenderLoop.singleton_ = RenderLoop.singleton_ || new this();
+  }
+
+  /** DEPRECATED */
+
+  public runScrollLoop(): void {
+    console.log('"runScrollLoop" is deprecated. Scroll and frame loops have been consolidated to avoid conflicts. Please use "runLoop" instead.');
+    this.runLoop();
+  }
+
+  public scrollPremeasure(fn: RenderFunction): RenderFunctionID {
+    console.log('"renderLoop.scrollPremeasure" is deprecated. Please use "renderLoop.premeasure" instead');
+    return this.premeasure(fn);
+  }
+
+  public scrollMeasure(fn: RenderFunction): RenderFunctionID {
+    console.log('"renderLoop.scrollMeasure" is deprecated. Please use "renderLoop.measure" instead');
+    return this.measure(fn);
+  }
+
+  public scrollMutate(fn: RenderFunction): RenderFunctionID {
+    console.log('"renderLoop.scrollMutate" is deprecated. Please use "renderLoop.mutate" instead');
+    return this.mutate(fn);
+  }
+
+  public scrollCleanup(fn: RenderFunction): RenderFunctionID {
+    console.log('"renderLoop.cleanup" is deprecated. Please use "renderLoop.cleanup" instead');
+    return this.cleanup(fn);
+  }
+
+  public anyMutate(fn: RenderFunction): RenderFunctionID {
+    console.log('"renderLoop.anyMutate" is deprecated. Please use "renderLoop.mutate" instead');
+    return this.mutate(fn);
+  }
+
+  public setFps(): void {
+    console.log('Deprecated renderLoop.getFps to avoid timeouts in frame loop');
+  }
+
+  public getFps(): void {
+    console.log('Deprecated renderLoop.getFps to avoid timeouts in frame loop');
+  }
+
+  public getMsPerFrame(): void {
+    console.log('Deprecated renderLoop.getFps to avoid timeouts in frame loop');
+  }
+
+  public getTargetFrameLength(): void {
+    console.log('Deprecated renderLoop.getFps to avoid timeouts in frame loop');
   }
 }
 

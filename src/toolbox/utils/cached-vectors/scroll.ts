@@ -73,11 +73,11 @@ class Scroll extends CachedElementVector<Vector2d> {
   }
 
   protected renderLoopCleanup_(fn: () => void): void {
-    renderLoop.scrollCleanup(fn);
+    renderLoop.cleanup(fn);
   }
 
   protected renderLoopPremeasure_(fn: () => void): void {
-    renderLoop.scrollPremeasure(fn);
+    renderLoop.premeasure(fn);
   }
 }
 

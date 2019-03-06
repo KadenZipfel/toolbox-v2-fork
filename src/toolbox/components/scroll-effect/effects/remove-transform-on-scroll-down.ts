@@ -34,9 +34,9 @@ class RemoveTransformOnScrollDown implements IEffect {
       distance > this.minimumScrollDistance_ &&
       Scroll.getSingleton().isScrollingDown()
     ) {
-      renderLoop.anyMutate(() => setStyle(target, 'transform', 'none'));
+      renderLoop.mutate(() => setStyle(target, 'transform', 'none'));
     } else {
-      renderLoop.anyMutate(() => setStyle(target, 'transform', ''));
+      renderLoop.mutate(() => setStyle(target, 'transform', ''));
     }
   }
 

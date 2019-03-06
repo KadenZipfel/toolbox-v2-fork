@@ -190,7 +190,7 @@ class ScrollEffect {
       }
       this.lastRunDistance_ = runValue.distance;
     });
-    renderLoop.scrollMeasure(() => this.handleScroll_());
+    renderLoop.measure(() => this.handleScroll_());
   }
 
   private static mapCallbacksFromCallbackOptions_(
@@ -225,8 +225,8 @@ class ScrollEffect {
       return;
     }
 
-    renderLoop.scrollMeasure(() => {
-      renderLoop.scrollCleanup(() => this.handleScroll_());
+    renderLoop.measure(() => {
+      renderLoop.cleanup(() => this.handleScroll_());
 
       const runValue = this.getRunValue_();
       if (this.shouldRun_(runValue)) {

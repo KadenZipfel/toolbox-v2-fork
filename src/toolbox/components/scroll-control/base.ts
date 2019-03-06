@@ -77,14 +77,14 @@ class ScrollControl {
       return;
     }
 
-    renderLoop.scrollMeasure(() => {
-      renderLoop.scrollCleanup(() => this.onScrollLoop_());
+    renderLoop.measure(() => {
+      renderLoop.cleanup(() => this.onScrollLoop_());
       if (this.interacting_) { // Do nothing if the slider is being used
         return;
       }
 
       const value = this.getControlValueFromScroll_();
-      renderLoop.scrollMutate(() => {
+      renderLoop.mutate(() => {
         this.control_.value = `${value}`;
         this.lastValue_ = value;
       });

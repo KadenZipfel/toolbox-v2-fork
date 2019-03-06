@@ -107,10 +107,10 @@ class Sticky2 {
       return;
     }
 
-    renderLoop.scrollMeasure(() => {
-      renderLoop.scrollCleanup(() => this.scrollLoop_());
+    renderLoop.measure(() => {
+      renderLoop.cleanup(() => this.scrollLoop_());
       const measureValue = this.getMeasureValue_();
-      renderLoop.scrollMutate(() => this.mutate_(measureValue));
+      renderLoop.mutate(() => this.mutate_(measureValue));
     });
   }
 

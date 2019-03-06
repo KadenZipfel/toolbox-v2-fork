@@ -53,8 +53,8 @@ class Sticky {
       return;
     }
 
-    renderLoop.scrollMeasure(() => {
-      renderLoop.scrollCleanup(() => this.renderLoop_());
+    renderLoop.measure(() => {
+      renderLoop.cleanup(() => this.renderLoop_());
       this.measure_()
     });
   }
@@ -90,7 +90,7 @@ class Sticky {
       return;
     }
 
-    renderLoop.anyMutate(() => {
+    renderLoop.mutate(() => {
       // Determine if the target should stick
       if (position === ContainerPosition.TOP) {
         this.positionTop_();
