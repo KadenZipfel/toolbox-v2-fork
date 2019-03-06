@@ -79,6 +79,10 @@ class Carousel implements ICarousel {
     this.transitionTarget_ = targetSlide;
   }
 
+  public transitionToSlideByIndex(index: number): void {
+    this.transitionToSlide(this.getSlideByIndex(index));
+  }
+
   private init_(): void {
     this.transition_.init(this.getSlides()[0], this);
     this.render_();
@@ -168,6 +172,10 @@ class Carousel implements ICarousel {
 
   public getSlideIndex(slide: HTMLElement): number {
     return this.getSlides().indexOf(slide);
+  }
+
+  public getSlideByIndex(index: number): HTMLElement {
+    return this.slides_[index];
   }
 
   public getSlidesBetween(a: HTMLElement, b: HTMLElement): HTMLElement[] {
