@@ -84,22 +84,6 @@ class RenderLoop {
     return renderFn;
   }
 
-  public setFps(fps: number): void {
-    this.msPerFrame_ = 1000 / fps;
-  }
-
-  public getFps(): number {
-    return 1000 / this.msPerFrame_;
-  }
-
-  public getMsPerFrame(): number {
-    return this.msPerFrame_;
-  }
-
-  public getTargetFrameLength() {
-    return this.msPerFrame_;
-  }
-
   /**
    * Runs all functions in the render loop.
    *
@@ -115,14 +99,6 @@ class RenderLoop {
     this.currentRun_ = new Date();
     this.runFns_();
     this.lastRun_ = this.currentRun_;
-    // const nextRun = <number>this.currentRun_.valueOf() + this.msPerFrame_;
-    // if (RenderLoop.getTimeUntilNextRun_(nextRun) > 2) {
-    //   setTimeout(
-    //     () => window.requestAnimationFrame(() => this.runLoop()),
-    //     RenderLoop.getTimeUntilNextRun_(nextRun));
-    // } else {
-    //   window.requestAnimationFrame(() => this.runLoop())
-    // }
     this.running_ = false;
   }
 
@@ -197,6 +173,22 @@ class RenderLoop {
   public anyMutate(fn: RenderFunction): RenderFunctionID {
     console.log('"renderLoop.anyMutate" is deprecated. Please use "renderLoop.mutate" instead');
     return this.mutate(fn);
+  }
+
+  public setFps(): void {
+    console.log('"renderLoop.setFps" has been deprecated to remove timeout processing. "renderLoop" now runs at maximal frame rate.')
+  }
+
+  public getFps(): void {
+    console.log('"renderLoop.getFps" has been deprecated to remove timeout processing. "renderLoop" now runs at maximal frame rate.')
+  }
+
+  public getMsPerFrame(): void {
+    console.log('"renderLoop.getMsPerFrame" has been deprecated to remove timeout processing. "renderLoop" now runs at maximal frame rate.')
+  }
+
+  public getTargetFrameLength(): void {
+    console.log('"renderLoop.getTargetFrameLength" has been deprecated to remove timeout processing. "renderLoop" now runs at maximal frame rate.')
   }
 }
 
