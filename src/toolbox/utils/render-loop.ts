@@ -51,7 +51,7 @@ class RenderLoop {
     this.msPerFrame_ = 33; // Default to 30fps
     this.lastRun_ = new Date();
     window.addEventListener('scroll', () => this.runLoop());
-    this.runLoop();
+    this.frameLoop_();
   }
 
   public framecount(fn: RenderFunction): RenderFunctionID {
@@ -115,17 +115,20 @@ class RenderLoop {
     this.currentRun_ = new Date();
     this.runFns_();
     this.lastRun_ = this.currentRun_;
-    const nextRun = <number>this.currentRun_.valueOf() + this.msPerFrame_;
-    if (RenderLoop.getTimeUntilNextRun_(nextRun) > 2) {
-      setTimeout(
-        () => window.requestAnimationFrame(() => this.runLoop()),
-        RenderLoop.getTimeUntilNextRun_(nextRun));
-    } else {
-      window.requestAnimationFrame(() => this.runLoop())
-    }
+    // const nextRun = <number>this.currentRun_.valueOf() + this.msPerFrame_;
+    // if (RenderLoop.getTimeUntilNextRun_(nextRun) > 2) {
+    //   setTimeout(
+    //     () => window.requestAnimationFrame(() => this.runLoop()),
+    //     RenderLoop.getTimeUntilNextRun_(nextRun));
+    // } else {
+    //   window.requestAnimationFrame(() => this.runLoop())
+    // }
     this.running_ = false;
+  }
 
-    window.requestAnimationFrame(() => this.runLoop());
+  private frameLoop_() {
+    this.runLoop();
+    window.requestAnimationFrame(() => this.frameLoop_())
   }
 
   private static getTimeUntilNextRun_(nextRun: number): number {
