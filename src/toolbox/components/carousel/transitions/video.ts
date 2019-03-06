@@ -51,7 +51,7 @@ class Video implements ITransition {
     const timeToTransition =
       this.video_.currentTime * 1000 - this.transitionTime_;
     this.video_.play();
-    if (timeToTransition < renderLoop.getMsPerFrame()) {
+    if (timeToTransition < 1000 / 24) {
       this.shouldShift_ = true;
       renderLoop.mutate(() => {
         carousel.getSlides()

@@ -167,7 +167,7 @@ class PhysicalSlide implements ITransition {
 
     // If we're close enough, let's call it
     if (
-      remainingTime <= renderLoop.getTargetFrameLength() * 1.1 ||
+      remainingTime <= ((1000 / 60) * 1.1) ||
       Math.abs(distanceToCenter) < 10) {
       draggable.setVelocity(new Vector2d(0, 0));
       carousel.getSlides()
