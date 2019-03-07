@@ -38,11 +38,13 @@ class RenderLoop {
   private currentRun_: number;
   private scheduledFns_: Map<symbol, RenderFunctionMap>;
   private rafCallback_: number;
+  private scrollCallbackFn_: () => void;
 
   constructor() {
     this.rafCallback_ = null;
     this.scheduledFns_ = new Map<symbol, RenderFunctionMap>();
     this.lastRun_ = performance.now();
+    this.scrollCallbackFn_ = () => {this.scrollLoop_();}
     this.init_();
   }
 
@@ -53,7 +55,11 @@ class RenderLoop {
 
     // Trigger updates on scroll
     window.addEventListener(
-      'scroll', () => {this.scrollLoop_();}, {capture: false, passive: true});
+      'scroll',
+      () => {
+        this.scrollLoop_();
+      },
+      {capture: false, passive: true, once: true});
     this.frameLoop_(performance.now());
   }
 
@@ -106,16 +112,26 @@ class RenderLoop {
     }
     window.cancelAnimationFrame(this.rafCallback_);
     this.runLoop(currentTime);
+    this.enableListeners_();
+  }
+
+  private enableListeners_() {
     this.rafCallback_ =
       window.requestAnimationFrame(
         (frameTime) => {this.frameLoop_(frameTime);});
+
+    // Trigger updates on next scroll
+    window.addEventListener(
+      'scroll',
+      () => {
+        this.scrollLoop_();
+      },
+      {capture: false, passive: true, once: true});
   }
 
   private frameLoop_(currentTime: number) {
     this.runLoop(currentTime);
-    this.rafCallback_ =
-      window.requestAnimationFrame(
-        (frameTime) => {this.frameLoop_(frameTime);});
+    this.enableListeners_();
   }
 
   /**
