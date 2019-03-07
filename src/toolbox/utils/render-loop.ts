@@ -1,5 +1,3 @@
-import {DynamicDefaultMap} from './map/dynamic-default';
-
 class RenderStep {
   public static readonly CLEANUP = Symbol('Cleanup');
   public static readonly FRAME_COUNT = Symbol('Frame Count');
@@ -36,15 +34,15 @@ type RenderFunctionMap = Map<RenderFunctionID, RenderFunction>;
 class RenderLoop {
   private static singleton_: RenderLoop = null;
 
-  private lastRun_: Date;
-  private currentRun_: Date;
+  private lastRun_: number;
+  private currentRun_: number;
   private scheduledFns_: Map<symbol, RenderFunctionMap>;
   private rafCallback_: number;
 
   constructor() {
     this.rafCallback_ = null;
     this.scheduledFns_ = new Map<symbol, RenderFunctionMap>();
-    this.lastRun_ = new Date();
+    this.lastRun_ = performance.now();
     this.init_();
   }
 
@@ -56,7 +54,7 @@ class RenderLoop {
     // Trigger updates on scroll
     window.addEventListener(
       'scroll', () => {this.scrollLoop_();}, {capture: false, passive: true});
-    this.frameLoop_();
+    this.frameLoop_(performance.now());
   }
 
   public framecount(fn: RenderFunction): RenderFunctionID {
@@ -95,34 +93,36 @@ class RenderLoop {
    * Use with caution!
    * Calling this manually should be avoided if at all possible.
    */
-  public runLoop(): void {
-    this.currentRun_ = new Date();
+  public runLoop(currentTime: number = null): void {
+    this.currentRun_ = currentTime || performance.now();
     this.runFns_();
     this.lastRun_ = this.currentRun_;
   }
 
   private scrollLoop_() {
+    const currentTime = performance.now();
+    if (currentTime - this.lastRun_ < 16) {
+      return;
+    }
     window.cancelAnimationFrame(this.rafCallback_);
-    this.runLoop();
+    this.runLoop(currentTime);
     this.rafCallback_ =
-      window.requestAnimationFrame(() => {this.frameLoop_();})
+      window.requestAnimationFrame(
+        (frameTime) => {this.frameLoop_(frameTime);});
   }
 
-  private frameLoop_() {
-    this.runLoop();
+  private frameLoop_(currentTime: number) {
+    this.runLoop(currentTime);
     this.rafCallback_ =
-      window.requestAnimationFrame(() => {this.frameLoop_();})
-  }
-
-  private static getTimeUntilNextRun_(nextRun: number): number {
-    return nextRun - <number>new Date().valueOf();
+      window.requestAnimationFrame(
+        (frameTime) => {this.frameLoop_(frameTime);});
   }
 
   /**
    * Returns the time since the last render loop in milliseconds
    */
   public getElapsedMilliseconds(): number {
-    return this.currentRun_.valueOf() - this.lastRun_.valueOf();
+    return this.currentRun_ - this.lastRun_;
   }
 
   public getElapsedSeconds(): number {
