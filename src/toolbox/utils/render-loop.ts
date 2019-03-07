@@ -40,9 +40,15 @@ const SCROLL_STEP_ORDER: Array<symbol> = [
   RenderStep.SCROLL_PRE_MEASURE,
   RenderStep.SCROLL_MEASURE,
   RenderStep.SCROLL_MUTATE,
-  RenderStep.ANY_MUTATE,
   RenderStep.SCROLL_CLEANUP,
 ];
+
+const SCROLL_STEPS_TO_FRAME_STEPS = new Map<symbol, symbol>([
+  [RenderStep.SCROLL_PRE_MEASURE, RenderStep.PRE_MEASURE],
+  [RenderStep.SCROLL_MEASURE, RenderStep.MEASURE],
+  [RenderStep.SCROLL_MUTATE, RenderStep.MUTATE],
+  [RenderStep.SCROLL_CLEANUP, RenderStep.CLEANUP],
+]);
 
 class RenderFunctionID {
   private readonly step_: symbol;
@@ -66,11 +72,13 @@ class RenderLoop {
   private readonly runLoopCallback_: (timestamp: number) => void;
   private readonly scheduledFns_: Map<symbol, RenderFunctionMap>;
   private lastRun_: number;
+  private scrollFnsRunOnFrame_: boolean;
   private currentRun_: number;
 
   constructor() {
     this.scheduledFns_ = new Map<symbol, RenderFunctionMap>();
     this.lastRun_ = performance.now();
+    this.scrollFnsRunOnFrame_ = true;
 
     // runLoopCallback_ is a micro-optimization to prevent creating identically
     // anonymous functions on each frame.
@@ -165,6 +173,7 @@ class RenderLoop {
     this.currentRun_ = currentTime || performance.now();
     this.runStepsInOrder_(ANIMATION_FRAME_STEP_ORDER);
     this.lastRun_ = this.currentRun_;
+    this.scrollFnsRunOnFrame_ = true;
   }
 
   private runLoopAndSetupFrameCallback_(timestamp: number): void {
@@ -190,7 +199,19 @@ class RenderLoop {
    * Calling this manually should be avoided if at all possible.
    */
   public runScrollLoop(): void {
-    this.runStepsInOrder_(SCROLL_STEP_ORDER);
+    if (!this.scrollFnsRunOnFrame_) {
+      return;
+    }
+    this.scrollFnsRunOnFrame_ = false;
+    SCROLL_STEP_ORDER.forEach((step) => {
+      const frameStep = SCROLL_STEPS_TO_FRAME_STEPS.get(step);
+      const fns = this.scheduledFns_.get(step).values();
+      let nextFn;
+      while (nextFn = fns.next().value) {
+        this.addFnToStep_(nextFn, frameStep);
+      }
+      this.scheduledFns_.set(step, new Map());
+    });
   }
 
   private runScrollLoopAndSetupListener_(): void {
