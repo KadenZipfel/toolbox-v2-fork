@@ -287,6 +287,9 @@ class FrameSequenceBg2 implements IEffect {
   }
 
   setFrameOpacity_(frame: number, opacity: string) {
+    if (typeof frame === 'undefined') {
+      return;
+    }
     renderLoop.anyMutate(() => {
       this.frameElements_[frame].style.display = 'block';
       this.frameElements_[frame].style.opacity = opacity;
