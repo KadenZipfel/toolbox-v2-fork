@@ -9,7 +9,6 @@ import {min} from "../../../utils/array/min";
 import {NumericRange} from "../../../utils/math/numeric-range";
 import {subtract} from "../../../utils/set/subtract";
 import {UserAgent} from "../../../utils/user-agent/user-agent";
-import {Firefox} from "../../../utils/user-agent/browser/firefox";
 import {ArrayMap} from "../../../utils/map/array";
 
 // Expected cap, drop it in half just to be safe
@@ -61,7 +60,6 @@ class FrameSequenceBg implements IEffect {
   private loadImageFunction_: (imageUrl: string) => Promise<HTMLImageElement>;
   private loadingPaused_: boolean;
   private imagesLoaded_: number;
-  private zIndex_: number;
   private lastState_: TargetState;
   private lastTargetFrame_: number;
 
@@ -108,7 +106,6 @@ class FrameSequenceBg implements IEffect {
     this.container_ = container;
     this.loadingPaused_ = !startLoadingImmediately;
     this.displayedFrameElementIndices_ = new Set();
-    this.zIndex_ = 1;
     this.loadImageFunction_ = loadImageFunction;
     this.numberOfFramesToInterpolate_ = framesToInterpolate;
     this.maximumParallelImageRequests_ = maximumLoadingThreads;
@@ -312,11 +309,7 @@ class FrameSequenceBg implements IEffect {
     const nonInterpolatedFrameNumber =
       this.getNonInterpolatedFrame_(targetFrame);
 
-    if (this.lastTargetFrame_ === targetFrame) {
-      if (this.zIndex_ >= Z_INDEX_CAP && CURRENT_BROWSER === Firefox) {
-        this.resetZIndexes_(); // Clean up z-indexes if they've gotten up there
-      }
-    } else {
+    if (this.lastTargetFrame_ !== targetFrame) {
         const loadedImageUrl =
           !this.isInterpolatedFrame_(targetFrame) ?
             this.getLoadedImageUrlForIndex_(nonInterpolatedFrameNumber) : null;
@@ -355,16 +348,6 @@ class FrameSequenceBg implements IEffect {
     return frameNumber % (this.numberOfFramesToInterpolate_ + 1) !== 0;
   }
 
-  private resetZIndexes_() {
-    this.frameElements_.forEach((frameElement) => {
-      const newIndex = parseInt('0' + frameElement.style.zIndex) - Z_INDEX_CAP;
-      renderLoop.anyMutate(() => {
-        frameElement.style.zIndex = `${newIndex}`;
-      });
-    });
-    renderLoop.cleanup(() => this.zIndex_ = 0);
-  }
-
   private updateWithLoadedFrame_(targetFrame: number): void {
     this.lastState_ = null;
     this.clearFrames_(new Set([targetFrame]));
@@ -400,11 +383,9 @@ class FrameSequenceBg implements IEffect {
       framesToClear = this.displayedFrameElementIndices_;
     }
     renderLoop.anyMutate(() => {
-      if (CURRENT_BROWSER !== Firefox) {
-        framesToClear.forEach((frame) => {
-          this.frameElements_[frame].style.opacity = '0';
-        });
-      }
+      framesToClear.forEach((frame) => {
+        this.frameElements_[frame].style.opacity = '0';
+      });
     });
   }
 
@@ -415,9 +396,6 @@ class FrameSequenceBg implements IEffect {
     renderLoop.anyMutate(() => {
       this.displayedFrameElementIndices_.add(frame);
       this.frameElements_[frame].style.opacity = opacity;
-      if (CURRENT_BROWSER === Firefox) {
-        this.frameElements_[frame].style.zIndex = `${++this.zIndex_}`;
-      }
     });
   }
 
