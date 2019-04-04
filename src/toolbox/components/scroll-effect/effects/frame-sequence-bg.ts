@@ -56,6 +56,7 @@ class FrameSequenceBg implements IEffect {
   private readonly displayedFrameElementIndices_: Set<number>;
   private readonly maximumParallelImageRequests_: number;
   private readonly backupFrames_: ArrayMap<number, string>;
+  private readonly zIndexCap_: number;
   private imageUrlsInOrder_: string[];
   private currentParallelImageRequests_: number;
   private loadImageFunction_: (imageUrl: string) => Promise<HTMLImageElement>;
@@ -74,6 +75,7 @@ class FrameSequenceBg implements IEffect {
    * Defaults to Toolbox's loadImage.
    * @param framesToInterpolate Number of cross-fade frames to interpolate
    * @param maximumLoadingThreads Number of images to load at once
+   * @param zIndexCap Maximum ZIndex level to use.
    *
    * Inner frames are positioned absolutely, so the container should be
    * positioned using fixed, absolute or relative.
@@ -87,12 +89,14 @@ class FrameSequenceBg implements IEffect {
       loadImageFunction = loadImage,
       framesToInterpolate = 0,
       maximumLoadingThreads = 12,
+      zIndexCap = Z_INDEX_CAP,
     }: {
       createFrameFunction?: (frame: number) => HTMLElement,
       startLoadingImmediately?: boolean,
       loadImageFunction?: (url: string) => Promise<HTMLImageElement>,
       framesToInterpolate?: number,
       maximumLoadingThreads?: number,
+      zIndexCap?: number,
     } = {}
   ) {
     this.backupFrames_ = new ArrayMap<number, string>();
@@ -113,6 +117,7 @@ class FrameSequenceBg implements IEffect {
     this.numberOfFramesToInterpolate_ = framesToInterpolate;
     this.maximumParallelImageRequests_ = maximumLoadingThreads;
     this.currentParallelImageRequests_ = 0;
+    this.zIndexCap_ = zIndexCap;
 
     this.init_();
   }
@@ -313,7 +318,7 @@ class FrameSequenceBg implements IEffect {
       this.getNonInterpolatedFrame_(targetFrame);
 
     if (this.lastTargetFrame_ === targetFrame) {
-      if (this.zIndex_ >= Z_INDEX_CAP && CURRENT_BROWSER === Firefox) {
+      if (this.zIndex_ >= this.zIndexCap_ && CURRENT_BROWSER === Firefox) {
         this.resetZIndexes_(); // Clean up z-indexes if they've gotten up there
       }
     } else {
@@ -357,7 +362,8 @@ class FrameSequenceBg implements IEffect {
 
   private resetZIndexes_() {
     this.frameElements_.forEach((frameElement) => {
-      const newIndex = parseInt('0' + frameElement.style.zIndex) - Z_INDEX_CAP;
+      const newIndex =
+        parseInt('0' + frameElement.style.zIndex) - this.zIndexCap_;
       renderLoop.anyMutate(() => {
         frameElement.style.zIndex = `${newIndex}`;
       });
