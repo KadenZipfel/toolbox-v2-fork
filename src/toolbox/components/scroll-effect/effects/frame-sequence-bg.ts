@@ -15,6 +15,7 @@ import {ArrayMap} from "../../../utils/map/array";
 // Expected cap, drop it in half just to be safe
 const Z_INDEX_CAP = 2147483647 / 2;
 const DEFAULT_FRAME_STYLE = `
+  display: none;
   opacity: 0;
   position: absolute;
   top: 0;
