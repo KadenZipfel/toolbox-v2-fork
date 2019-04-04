@@ -11,10 +11,12 @@ import {subtract} from "../../../utils/set/subtract";
 import {UserAgent} from "../../../utils/user-agent/user-agent";
 import {Firefox} from "../../../utils/user-agent/browser/firefox";
 import {ArrayMap} from "../../../utils/map/array";
+import {union} from "../../../utils/set/union";
 
 // Expected cap, drop it in half just to be safe
 const Z_INDEX_CAP = 2147483647 / 2;
 const DEFAULT_FRAME_STYLE = `
+  display: none;
   opacity: 0;
   position: absolute;
   top: 0;
@@ -398,19 +400,24 @@ class FrameSequenceBg implements IEffect {
     }
   }
 
-  private clearFrames_(exceptions: Set<number> = null) {
+  private clearFrames_(rawExceptions: Set<number> = null) {
     let framesToClear: Set<number>;
+    const exceptions =
+      CURRENT_BROWSER === Firefox && this.lastState_ !== null ?
+        union(
+          rawExceptions,
+          new Set([this.lastState_.backFrame, this.lastState_.frontFrame])) :
+        rawExceptions;
     if (exceptions) {
       framesToClear = subtract(this.displayedFrameElementIndices_, exceptions);
     } else {
       framesToClear = this.displayedFrameElementIndices_;
     }
     renderLoop.anyMutate(() => {
-      if (CURRENT_BROWSER !== Firefox) {
-        framesToClear.forEach((frame) => {
-          this.frameElements_[frame].style.opacity = '0';
-        });
-      }
+      framesToClear.forEach((frame) => {
+        this.frameElements_[frame].style.opacity = '0';
+        this.frameElements_[frame].style.display = 'none';
+      });
     });
   }
 
@@ -421,6 +428,7 @@ class FrameSequenceBg implements IEffect {
     renderLoop.anyMutate(() => {
       this.displayedFrameElementIndices_.add(frame);
       this.frameElements_[frame].style.opacity = opacity;
+      this.frameElements_[frame].style.display = 'block';
       if (CURRENT_BROWSER === Firefox) {
         this.frameElements_[frame].style.zIndex = `${++this.zIndex_}`;
       }
