@@ -11,7 +11,6 @@ import {subtract} from "../../../utils/set/subtract";
 import {UserAgent} from "../../../utils/user-agent/user-agent";
 import {Firefox} from "../../../utils/user-agent/browser/firefox";
 import {ArrayMap} from "../../../utils/map/array";
-import {union} from "../../../utils/set/union";
 
 // Expected cap, drop it in half just to be safe
 const Z_INDEX_CAP = 2147483647 / 2;
@@ -364,7 +363,7 @@ class FrameSequenceBg implements IEffect {
   }
 
   private resetZIndexes_() {
-    if (this.zIndex_ < 5) {
+    if (this.zIndex_ < this.zIndexCap_) {
       return;
     }
     const subtraction = this.zIndex_ - 4;
