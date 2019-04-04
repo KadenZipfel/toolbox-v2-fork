@@ -322,14 +322,12 @@ class FrameSequenceBg implements IEffect {
     const nonInterpolatedFrameNumber =
       this.getNonInterpolatedFrame_(targetFrame);
 
-    if (this.lastTargetFrame_ === targetFrame) {
-      if (this.zIndex_ >= this.zIndexCap_ && CURRENT_BROWSER === Firefox) {
-        this.resetZIndexes_(); // Clean up z-indexes if they've gotten up there
-      }
-    } else {
-        const loadedImageUrl =
-          !this.isInterpolatedFrame_(targetFrame) ?
-            this.getLoadedImageUrlForIndex_(nonInterpolatedFrameNumber) : null;
+    this.resetZIndexes_();
+
+    if (this.lastTargetFrame_ !== targetFrame) {
+      const loadedImageUrl =
+        !this.isInterpolatedFrame_(targetFrame) ?
+          this.getLoadedImageUrlForIndex_(nonInterpolatedFrameNumber) : null;
 
       if (loadedImageUrl !== null) {
         this.updateWithLoadedFrame_(nonInterpolatedFrameNumber);
@@ -368,12 +366,13 @@ class FrameSequenceBg implements IEffect {
   private resetZIndexes_() {
     this.frameElements_.forEach((frameElement) => {
       const newIndex =
-        parseInt('0' + frameElement.style.zIndex) - this.zIndexCap_;
+        Math.max(
+          0, parseInt('0' + frameElement.style.zIndex) - this.zIndex_ + 2);
       renderLoop.anyMutate(() => {
         frameElement.style.zIndex = `${newIndex}`;
       });
+      this.zIndex_ = 2;
     });
-    renderLoop.cleanup(() => this.zIndex_ = 0);
   }
 
   private updateWithLoadedFrame_(targetFrame: number): void {
