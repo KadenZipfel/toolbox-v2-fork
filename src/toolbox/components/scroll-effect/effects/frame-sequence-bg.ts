@@ -364,14 +364,18 @@ class FrameSequenceBg implements IEffect {
   }
 
   private resetZIndexes_() {
+    if (this.zIndex_ < 5) {
+      return;
+    }
+    const subtraction = this.zIndex_ - 4;
+    this.zIndex_ = 4;
+
     this.frameElements_.forEach((frameElement) => {
       const newIndex =
-        Math.max(
-          0, parseInt('0' + frameElement.style.zIndex) - this.zIndex_ + 2);
+        Math.max(0, parseInt('0' + frameElement.style.zIndex) - subtraction);
       renderLoop.anyMutate(() => {
         frameElement.style.zIndex = `${newIndex}`;
       });
-      this.zIndex_ = 2;
     });
   }
 
