@@ -16,7 +16,6 @@ import {union} from "../../../utils/set/union";
 // Expected cap, drop it in half just to be safe
 const Z_INDEX_CAP = 2147483647 / 2;
 const DEFAULT_FRAME_STYLE = `
-  display: none;
   opacity: 0;
   position: absolute;
   top: 0;
@@ -154,7 +153,11 @@ class FrameSequenceBg implements IEffect {
   }
 
   private setupFrames_() {
-    const defaultStyles = styleStringToMap(DEFAULT_FRAME_STYLE);
+    const frameStyle =
+      CURRENT_BROWSER === Firefox ?
+        DEFAULT_FRAME_STYLE :
+        `${DEFAULT_FRAME_STYLE}; display: none;`;
+    const defaultStyles = styleStringToMap(frameStyle);
     this.frameElements_
       .forEach((frame) => {
         setStylesFromMap(frame, defaultStyles);
@@ -400,14 +403,11 @@ class FrameSequenceBg implements IEffect {
     }
   }
 
-  private clearFrames_(rawExceptions: Set<number> = null) {
+  private clearFrames_(exceptions: Set<number> = null) {
+    if (CURRENT_BROWSER === Firefox) {
+      return;
+    }
     let framesToClear: Set<number>;
-    const exceptions =
-      CURRENT_BROWSER === Firefox && this.lastState_ !== null ?
-        union(
-          rawExceptions,
-          new Set([this.lastState_.backFrame, this.lastState_.frontFrame])) :
-        rawExceptions;
     if (exceptions) {
       framesToClear = subtract(this.displayedFrameElementIndices_, exceptions);
     } else {
@@ -428,9 +428,10 @@ class FrameSequenceBg implements IEffect {
     renderLoop.anyMutate(() => {
       this.displayedFrameElementIndices_.add(frame);
       this.frameElements_[frame].style.opacity = opacity;
-      this.frameElements_[frame].style.display = 'block';
       if (CURRENT_BROWSER === Firefox) {
         this.frameElements_[frame].style.zIndex = `${++this.zIndex_}`;
+      } else {
+        this.frameElements_[frame].style.display = 'block';
       }
     });
   }
