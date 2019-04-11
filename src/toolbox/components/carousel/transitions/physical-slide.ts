@@ -108,7 +108,7 @@ class PhysicalSlide implements ITransition {
             draggable,
             Drag,
             (event: Drag) => {
-              this.adjustSplit_(carousel, event.getElement(), event.getDelta());
+              this.adjustSplit_(carousel, event.getDelta());
             });
           eventHandler.addListener(
             draggable,
@@ -198,10 +198,9 @@ class PhysicalSlide implements ITransition {
 
   private adjustSplit_(
     carousel: ICarousel,
-    target: HTMLElement = null,
     adjustment: Vector2d = ZERO_VECTOR_2D
   ): void {
-    const targetSlide = target ? target : carousel.getActiveSlide();
+    const targetSlide = carousel.getActiveSlide();
     const halves = this.getHalves_(carousel, targetSlide);
     const slidesBefore = halves[0];
     const slidesAfter = halves[1];
