@@ -44,16 +44,14 @@ class TransitionTarget {
 
 class SlideToDraggableMap extends DynamicDefaultMap<HTMLElement, PhysicallyDraggable> {
   constructor(physical2d: Physical2d = null) {
-    const fixedYDraggableConstraint = new DraggableFixedYConstraint();
+    const physicallyDraggableConfig =
+      {
+        draggableConstraints: [new DraggableFixedYConstraint()],
+        physical2d: physical2d,
+      };
 
     const defaultFn = (slide: HTMLElement) => {
-      return new PhysicallyDraggable(
-        slide,
-        {
-          draggableConstraints: [fixedYDraggableConstraint],
-          physical2d: physical2d,
-        }
-      );
+      return new PhysicallyDraggable(slide, physicallyDraggableConfig);
     };
     super([], Map, defaultFn);
   }
@@ -83,14 +81,6 @@ class PhysicalSlide implements ITransition {
   public init(activeSlide: HTMLElement, carousel: ICarousel): void {
     PhysicalSlide.initActiveSlide_(activeSlide, carousel);
     this.initDraggableSlides_(carousel);
-  }
-
-  private static getTranslationFromCenter_(
-    target: HTMLElement, carousel: ICarousel
-  ): Vector2d {
-    const distance =
-      getVisibleDistanceBetweenElementCenters(target, carousel.getContainer());
-    return new Vector2d(distance.x, 0);
   }
 
   private static initActiveSlide_(
@@ -127,15 +117,22 @@ class PhysicalSlide implements ITransition {
         });
   }
 
+  private static getTranslationFromCenter_(
+    target: HTMLElement, carousel: ICarousel
+  ): Vector2d {
+    const distance =
+      getVisibleDistanceBetweenElementCenters(target, carousel.getContainer());
+    return new Vector2d(distance.x, 0);
+  }
+
   public renderLoop(carousel: ICarousel): void {
     renderLoop.measure(() => {
-      if (
-        !carousel.isBeingInteractedWith() &&
-        this.transitionTargets_.has(carousel)
-      ) {
-        this.transitionToTarget_(carousel);
-      } else {
-        this.adjustSplit_(carousel);
+      if (!carousel.isBeingInteractedWith()) {
+        if(this.transitionTargets_.has(carousel)) {
+          this.transitionToTarget_(carousel);
+        } else {
+          this.adjustSplit_(carousel);
+        }
       }
     });
   }
@@ -149,6 +146,8 @@ class PhysicalSlide implements ITransition {
   }
 
   private transitionToTarget_(carousel: ICarousel) {
+    this.adjustSplit_(carousel);
+
     const target = this.transitionTargets_.get(carousel);
     const targetSlide = target.getTarget();
     const remainingTime =
