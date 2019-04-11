@@ -129,12 +129,13 @@ class PhysicalSlide implements ITransition {
 
   public renderLoop(carousel: ICarousel): void {
     renderLoop.measure(() => {
-      if (!carousel.isBeingInteractedWith()) {
-        if (this.transitionTargets_.has(carousel)) {
-          this.transitionToTarget_(carousel);
-        } else {
-          this.adjustSplit_(carousel);
-        }
+      if (
+        !carousel.isBeingInteractedWith() &&
+        this.transitionTargets_.has(carousel)
+      ) {
+        this.transitionToTarget_(carousel);
+      } else {
+        this.adjustSplit_(carousel);
       }
     });
   }
