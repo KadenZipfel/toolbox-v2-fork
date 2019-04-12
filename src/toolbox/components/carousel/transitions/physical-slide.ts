@@ -21,6 +21,7 @@ import {split} from "../../../utils/array/split";
 import {ZERO_VECTOR_2D} from "../../../utils/math/geometry/zero-vector-2d";
 import {IPhysicalSlideConfig} from "./i-physical-slide-config";
 import {isVisible} from "../../../utils/dom/position/is-visible";
+import {getVisibleDistanceBetweenElements} from "../../../utils/dom/position/horizontal/get-visible-distance-between-elements";
 
 const MAX_DRAG_VELOCITY = 10000;
 const SLIDE_INTERACTION = Symbol('Physical Slide Interaction');
@@ -204,23 +205,29 @@ class PhysicalSlide implements ITransition {
     adjustment: Vector2d = ZERO_VECTOR_2D
   ): void {
 
-    if (carousel.allowsLooping()) {
-      // If the main element is off screen then we need to reset the adjustment
-      // by a viewport width.
-      if (!isVisible(target)) {
-
-      }
-    }
+    // if (carousel.allowsLooping()) {
+    //   // If the main element is off screen then we need to reset the adjustment
+    //   // by a viewport width.
+    //   if (!isVisible(target)) {
+    //
+    //   }
+    // }
 
     const activeSlide = carousel.getActiveSlide();
     const targetSlide = target ? target : activeSlide;
 
+    const [slidesBeforeActive, slidesAfterActive] =
+      PhysicalSlide.getHalves_(carousel, activeSlide);
+    const reOrderedSlides =
+      [...slidesBeforeActive, activeSlide, ...slidesAfterActive];
+
+    const activeIndex = reOrderedSlides.indexOf(activeSlide);
+    const targetIndex = reOrderedSlides.indexOf(targetSlide);
+    const diff = activeIndex - targetIndex;
+    // const diff = getVisibleDistanceBetweenElements(activeSlide, targetSlide);
+
     const [slidesBefore, slidesAfter] =
       PhysicalSlide.getHalves_(carousel, targetSlide);
-
-    const activeIndex = carousel.getSlideIndex(activeSlide);
-    const targetIndex = carousel.getSlideIndex(targetSlide);
-    const diff = activeIndex - targetIndex;
 
     if (diff !== 0) {
       const shiftFunction =
