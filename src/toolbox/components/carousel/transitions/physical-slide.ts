@@ -210,15 +210,18 @@ class PhysicalSlide implements ITransition {
 
     const activeIndex = carousel.getSlideIndex(activeSlide);
     const targetIndex = carousel.getSlideIndex(targetSlide);
-    const increment = getSign(activeIndex - targetIndex);
+    const diff = activeIndex - targetIndex;
 
-    const shiftFunction =
-      increment == 1 ?
-        () => slidesAfter.push(slidesBefore.shift()) :
-        () => slidesBefore.unshift(slidesAfter.pop());
+    if (diff !== 0) {
+      const shiftFunction =
+        diff > 0 ?
+          () => slidesAfter.push(slidesBefore.shift()) :
+          () => slidesBefore.unshift(slidesAfter.pop());
 
-    for (let i = targetIndex; i != activeIndex; i += increment) {
-      shiftFunction();
+      const absDiff = Math.abs(diff);
+      for (let i = 0; i < absDiff; i++) {
+        shiftFunction();
+      }
     }
 
     this.adjustSlidesBefore_(targetSlide, slidesBefore, adjustment);
