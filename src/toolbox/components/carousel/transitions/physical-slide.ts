@@ -20,8 +20,6 @@ import {getSign} from "../../../utils/math/get-sign";
 import {split} from "../../../utils/array/split";
 import {ZERO_VECTOR_2D} from "../../../utils/math/geometry/zero-vector-2d";
 import {IPhysicalSlideConfig} from "./i-physical-slide-config";
-import {isVisible} from "../../../utils/dom/position/is-visible";
-import {getVisibleDistanceBetweenElements} from "../../../utils/dom/position/horizontal/get-visible-distance-between-elements";
 
 const MAX_DRAG_VELOCITY = 10000;
 const SLIDE_INTERACTION = Symbol('Physical Slide Interaction');
@@ -313,6 +311,7 @@ class PhysicalSlide implements ITransition {
   }
 
   private startInteraction_(event: DragStart, carousel: ICarousel): void {
+    this.transitionTargets_.delete(carousel);
     carousel.startInteraction(SLIDE_INTERACTION);
   }
 
