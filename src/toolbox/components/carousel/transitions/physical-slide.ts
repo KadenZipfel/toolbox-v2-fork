@@ -137,7 +137,7 @@ class PhysicalSlide implements ITransition {
     });
   }
 
-  private getDistanceToCenter_(
+  private static getDistanceToCenter_(
     target: HTMLElement, carousel: ICarousel
   ): number {
     const distanceFromCenter =
@@ -153,7 +153,8 @@ class PhysicalSlide implements ITransition {
     const remainingTime =
       target.getTargetTime().valueOf() - new Date().valueOf();
 
-    const distanceToCenter = this.getDistanceToCenter_(targetSlide, carousel);
+    const distanceToCenter =
+      PhysicalSlide.getDistanceToCenter_(targetSlide, carousel);
 
     const draggable = this.draggableBySlide_.get(targetSlide);
     const breakForce = draggable.getBreakForce();
@@ -185,11 +186,12 @@ class PhysicalSlide implements ITransition {
     draggable.setVelocity(new Vector2d(adjustedVelocity, 0));
   }
 
-  private getHalves_(
-    carousel: ICarousel, targetSlide: HTMLElement
+  private static getHalves_(
+    carousel: ICarousel, targetSlide: HTMLElement, slideDifference: number,
   ): [HTMLElement[], HTMLElement[]] {
     if (carousel.allowsLooping()) {
-      return splitEvenlyOnItem(carousel.getSlides(), targetSlide);
+      return splitEvenlyOnItem(
+        carousel.getSlides(), targetSlide, true, slideDifference);
     } else {
       return <[HTMLElement[], HTMLElement[]]>split(
         carousel.getSlides(), targetSlide);
@@ -201,8 +203,13 @@ class PhysicalSlide implements ITransition {
     target: HTMLElement = null,
     adjustment: Vector2d = ZERO_VECTOR_2D
   ): void {
-    const targetSlide = target ? target : carousel.getActiveSlide();
-    const halves = this.getHalves_(carousel, targetSlide);
+    const activeSlide = carousel.getActiveSlide();
+    const targetSlide = target ? target : activeSlide;
+    const slideDifference =
+      carousel.getSlideIndex(activeSlide) - carousel.getSlideIndex(targetSlide);
+
+    const halves =
+      PhysicalSlide.getHalves_(carousel, targetSlide, slideDifference);
     const slidesBefore = halves[0];
     const slidesAfter = halves[1];
     this.adjustSlides_(targetSlide, slidesBefore.reverse(), -1, adjustment);
@@ -271,7 +278,8 @@ class PhysicalSlide implements ITransition {
 
     setTimeout(() => {
       const activeSlide = this.getActiveSlide(carousel);
-      const distance = this.getDistanceToCenter_(activeSlide, carousel);
+      const distance =
+        PhysicalSlide.getDistanceToCenter_(activeSlide, carousel);
       const velocity = draggable.getVelocity().x;
       const velocitySign = getSign(velocity);
       const distanceSign = getSign(distance);

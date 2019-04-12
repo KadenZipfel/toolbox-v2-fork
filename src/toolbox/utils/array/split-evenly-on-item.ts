@@ -27,10 +27,10 @@ function buildHalf<T>(
 }
 
 function splitEvenlyOnItem<T>(
-  values: T[], item: T, weightRight = true
+  values: T[], item: T, weightRight: boolean = true, offset: number = 0
 ): [T[], T[]] {
-  const leftLength = getLengthOfHalfOfArray_(values, !weightRight);
-  const rightLength = getLengthOfHalfOfArray_(values, weightRight);
+  const leftLength = getLengthOfHalfOfArray_(values, !weightRight) - offset;
+  const rightLength = getLengthOfHalfOfArray_(values, weightRight) + offset;
   const itemIndex = values.indexOf(item);
   const left = buildHalf(values, itemIndex, leftLength, -1);
   const right = buildHalf(values, itemIndex, rightLength, 1);
