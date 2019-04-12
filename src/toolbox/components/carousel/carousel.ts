@@ -37,7 +37,7 @@ class Carousel implements ICarousel {
    * Does not need to be the direct parent.
    *
    * @param slides HTMLElements containing slide content.
-   * 
+   *
    * @param onTransitionCallbacks Functions run when the active slide changes.
    * @param activeCssClass Class to apply to active slide.
    * @param beforeCssClass Class to apply to slides before active slide.
@@ -146,11 +146,24 @@ class Carousel implements ICarousel {
     removeClassIfPresent(activeSlide, this.beforeCssClass_);
     removeClassIfPresent(activeSlide, this.afterCssClass_);
 
+    const beforeClasses =
+      this.slides_.map((slide, index) => `${this.beforeCssClass_}--${index}`);
+    const afterClasses =
+      this.slides_.map((slide, index) => `${this.afterCssClass_}--${index}`);
+
+    const removeProblemClasses = (slide: HTMLElement) => {
+      beforeClasses.forEach(
+        (problemClass) => removeClassIfPresent(slide, problemClass));
+      afterClasses.forEach(
+        (problemClass) => removeClassIfPresent(slide, problemClass));
+    };
+
     slidesBefore
       .forEach((slide, index) => {
         removeClassIfPresent(slide, this.activeClass_);
         addClassIfMissing(slide, this.beforeCssClass_);
         removeClassIfPresent(slide, this.afterCssClass_);
+        removeProblemClasses(slide);
         addClassIfMissing(slide, `${this.beforeCssClass_}--${index}`);
       });
 
@@ -159,6 +172,7 @@ class Carousel implements ICarousel {
         removeClassIfPresent(slide, this.activeClass_);
         removeClassIfPresent(slide, this.beforeCssClass_);
         addClassIfMissing(slide, this.afterCssClass_);
+        removeProblemClasses(slide);
         addClassIfMissing(slide, `${this.afterCssClass_}--${index}`);
       });
   }
