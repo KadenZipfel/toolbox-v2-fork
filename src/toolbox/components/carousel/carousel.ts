@@ -159,7 +159,7 @@ class Carousel implements ICarousel {
         (problemClass) => removeClassIfPresent(slide, problemClass));
     };
 
-    slidesBefore
+    slidesBefore.reverse()
       .forEach((slide, index) => {
         removeClassIfPresent(slide, this.activeClass_);
         addClassIfMissing(slide, this.beforeCssClass_);
