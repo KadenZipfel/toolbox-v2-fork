@@ -218,7 +218,8 @@ class PhysicalSlide implements ITransition {
           () => slidesAfter.push(slidesBefore.shift()) :
           () => slidesBefore.unshift(slidesAfter.pop());
 
-      const absDiff = Math.abs(diff);
+      const absDiff =
+        Math.min(Math.abs(diff), slidesBefore.length, slidesAfter.length);
       for (let i = 0; i < absDiff; i++) {
         shiftFunction();
       }
