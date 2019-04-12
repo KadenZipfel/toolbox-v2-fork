@@ -8,6 +8,7 @@ import {removeClassIfPresent} from "../../utils/dom/class/remove-class-if-presen
 import {CarouselSyncManager} from './sync-manager';
 import {NumericRange} from "../../utils/math/numeric-range";
 import {CssClassesOnly} from "./transitions/css-classes-only";
+import {splitEvenlyOnItem} from "../../utils/array/split-evenly-on-item";
 
 const defaultTransition: ITransition = new CssClassesOnly();
 const INTERACTION: symbol = Symbol('interaction');
@@ -222,11 +223,19 @@ class Carousel implements ICarousel {
   }
 
   public getSlidesBefore(slide: HTMLElement): HTMLElement[] {
-    return this.getSlides().slice(0, this.getSlides().indexOf(slide));
+    if (this.allowsLooping()) {
+      return splitEvenlyOnItem(this.getSlides(), slide, true)[0];
+    } else {
+      return this.getSlides().slice(0, this.getSlides().indexOf(slide));
+    }
   }
 
   public getSlidesAfter(slide: HTMLElement): HTMLElement[] {
-    return this.getSlides().slice(this.getSlides().indexOf(slide) + 1);
+    if (this.allowsLooping()) {
+      return splitEvenlyOnItem(this.getSlides(), slide, true)[1];
+    } else {
+      return this.getSlides().slice(this.getSlides().indexOf(slide) + 1);
+    }
   }
 
   public next(): void {
