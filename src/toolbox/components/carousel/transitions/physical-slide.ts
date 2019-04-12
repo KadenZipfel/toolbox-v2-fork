@@ -187,11 +187,10 @@ class PhysicalSlide implements ITransition {
   }
 
   private static getHalves_(
-    carousel: ICarousel, targetSlide: HTMLElement, slideDifference: number,
+    carousel: ICarousel, targetSlide: HTMLElement
   ): [HTMLElement[], HTMLElement[]] {
     if (carousel.allowsLooping()) {
-      return splitEvenlyOnItem(
-        carousel.getSlides(), targetSlide, true, slideDifference);
+      return splitEvenlyOnItem(carousel.getSlides(), targetSlide, true);
     } else {
       return <[HTMLElement[], HTMLElement[]]>split(
         carousel.getSlides(), targetSlide);
@@ -205,15 +204,25 @@ class PhysicalSlide implements ITransition {
   ): void {
     const activeSlide = carousel.getActiveSlide();
     const targetSlide = target ? target : activeSlide;
-    const slideDifference =
-      carousel.getSlideIndex(activeSlide) - carousel.getSlideIndex(targetSlide);
 
-    const halves =
-      PhysicalSlide.getHalves_(carousel, targetSlide, slideDifference);
-    const slidesBefore = halves[0];
-    const slidesAfter = halves[1];
-    this.adjustSlides_(targetSlide, slidesBefore.reverse(), -1, adjustment);
-    this.adjustSlides_(targetSlide, slidesAfter, 1, adjustment);
+    const [slidesBefore, slidesAfter] =
+      PhysicalSlide.getHalves_(carousel, targetSlide);
+
+    const activeIndex = carousel.getSlideIndex(activeSlide);
+    const targetIndex = carousel.getSlideIndex(targetSlide);
+    const increment = getSign(activeIndex - targetIndex);
+
+    const shiftFunction =
+      increment == 1 ?
+        () => slidesAfter.push(slidesBefore.shift()) :
+        () => slidesBefore.unshift(slidesAfter.pop());
+
+    for (let i = targetIndex; i != activeIndex; i += increment) {
+      shiftFunction();
+    }
+
+    this.adjustSlidesBefore_(targetSlide, slidesBefore, adjustment);
+    this.adjustSlidesAfter_(targetSlide, slidesAfter, adjustment);
   }
 
   private getSlideAdjustments_(
@@ -249,6 +258,23 @@ class PhysicalSlide implements ITransition {
       activeSlide.offsetWidth / 2 +
       sumOffsetWidths(...previousSlides));
     return desiredDistance - currentOffset.x;
+  }
+
+  private adjustSlidesBefore_(
+    activeSlide: HTMLElement,
+    slides: HTMLElement[],
+    additionalTranslation: Vector2d
+  ) {
+    this.adjustSlides_(
+      activeSlide, slides.reverse(), -1, additionalTranslation);
+  }
+
+  private adjustSlidesAfter_(
+    activeSlide: HTMLElement,
+    slides: HTMLElement[],
+    additionalTranslation: Vector2d
+  ) {
+    this.adjustSlides_(activeSlide, slides, 1, additionalTranslation);
   }
 
   private adjustSlides_(
