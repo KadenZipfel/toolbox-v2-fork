@@ -20,6 +20,7 @@ import {getSign} from "../../../utils/math/get-sign";
 import {split} from "../../../utils/array/split";
 import {ZERO_VECTOR_2D} from "../../../utils/math/geometry/zero-vector-2d";
 import {IPhysicalSlideConfig} from "./i-physical-slide-config";
+import {isVisible} from "../../../utils/dom/position/is-visible";
 
 const MAX_DRAG_VELOCITY = 10000;
 const SLIDE_INTERACTION = Symbol('Physical Slide Interaction');
@@ -202,6 +203,15 @@ class PhysicalSlide implements ITransition {
     target: HTMLElement = null,
     adjustment: Vector2d = ZERO_VECTOR_2D
   ): void {
+
+    if (carousel.allowsLooping()) {
+      // If the main element is off screen then we need to reset the adjustment
+      // by a viewport width.
+      if (!isVisible(target)) {
+
+      }
+    }
+
     const activeSlide = carousel.getActiveSlide();
     const targetSlide = target ? target : activeSlide;
 
