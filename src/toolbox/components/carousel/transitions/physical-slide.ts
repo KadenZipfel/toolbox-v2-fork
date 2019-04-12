@@ -224,7 +224,6 @@ class PhysicalSlide implements ITransition {
     const activeIndex = reOrderedSlides.indexOf(activeSlide);
     const targetIndex = reOrderedSlides.indexOf(targetSlide);
     const diff = activeIndex - targetIndex;
-    // const diff = getVisibleDistanceBetweenElements(activeSlide, targetSlide);
 
     const [slidesBefore, slidesAfter] =
       PhysicalSlide.getHalves_(carousel, targetSlide);
