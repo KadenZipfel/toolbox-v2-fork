@@ -338,7 +338,7 @@ class PhysicalSlide implements ITransition {
           carousel.next();
         }
       }
-    }, 100);
+    }, 300);
   }
 
   public transition(target: HTMLElement, carousel: ICarousel): void {
