@@ -20,7 +20,6 @@ import {getSign} from "../../../utils/math/get-sign";
 import {split} from "../../../utils/array/split";
 import {ZERO_VECTOR_2D} from "../../../utils/math/geometry/zero-vector-2d";
 import {IPhysicalSlideConfig} from "./i-physical-slide-config";
-import {isVisible} from '../../../utils/dom/position/is-visible';
 
 const MAX_DRAG_VELOCITY = 10000;
 const SLIDE_INTERACTION = Symbol('Physical Slide Interaction');
@@ -201,29 +200,27 @@ class PhysicalSlide implements ITransition {
   private adjustSplit_(
     carousel: ICarousel,
     target: HTMLElement = null,
-    rawAdjustment: Vector2d = ZERO_VECTOR_2D
+    adjustment: Vector2d = ZERO_VECTOR_2D
   ): void {
 
     const activeSlide = carousel.getActiveSlide();
     const targetSlide = target ? target : activeSlide;
 
-    const totalWidth =
-      carousel.getSlides()
-        .reduce((total, slide) => total + slide.offsetWidth, 0);
+    if (target !== null && carousel.allowsLooping()) {
+      const totalWidth =
+        carousel.getSlides()
+          .reduce((total, slide) => total + slide.offsetWidth, 0);
+      const distanceFromCenter =
+        getVisibleDistanceBetweenElementCenters(targetSlide);
+      const distanceFromCenterSign = getSign(distanceFromCenter);
 
-    const distanceFromCenter =
-      getVisibleDistanceBetweenElementCenters(targetSlide);
-    const distanceFromCenterSign = getSign(distanceFromCenter);
-    const requiresReset = Math.abs(distanceFromCenter) > (totalWidth / 2);
-
-    // If the main element is off screen then we need to reset the adjustment
-    // by a carousel width.
-    const adjustment =
-      carousel.allowsLooping() && requiresReset ?
-        new Vector2d(
-          rawAdjustment.x - (totalWidth * distanceFromCenterSign),
-          rawAdjustment.y) :
-        rawAdjustment;
+      // Reset during drag if the drag has gone exceedingly far
+      if (Math.abs(distanceFromCenter) > (totalWidth / 2)) {
+        const xTranslation = -totalWidth * distanceFromCenterSign;
+        this.adjustSlides_(
+          targetSlide, [targetSlide], 1, new Vector2d(xTranslation, 0));
+      }
+    }
 
     const [slidesBeforeActive, slidesAfterActive] =
       PhysicalSlide.getHalves_(carousel, activeSlide);
