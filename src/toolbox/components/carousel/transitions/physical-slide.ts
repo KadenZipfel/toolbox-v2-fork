@@ -58,6 +58,7 @@ class SlideToDraggableMap extends DynamicDefaultMap<HTMLElement, PhysicallyDragg
 }
 
 class PhysicalSlide implements ITransition {
+  private readonly dragAdjustments_: DynamicDefaultMap<ICarousel, Vector2d>;
   private readonly draggableBySlide_: SlideToDraggableMap;
   private readonly transitionTargets_: Map<ICarousel, TransitionTarget>;
   private readonly transitionTime_: number;
@@ -73,6 +74,9 @@ class PhysicalSlide implements ITransition {
         new Physical2d({constraints: [new FixedYConstraint()]}) :
         physical2d;
 
+    this.dragAdjustments_ =
+      DynamicDefaultMap.usingFunction<ICarousel, Vector2d>(
+        () => ZERO_VECTOR_2D);
     this.draggableBySlide_ = new SlideToDraggableMap(finalPhysical2d);
     this.transitionTime_ = transitionTime;
     this.transitionTargets_ = new Map<ICarousel, TransitionTarget>();
@@ -217,9 +221,11 @@ class PhysicalSlide implements ITransition {
       // Reset during drag if the drag has gone exceedingly far
       if (Math.abs(distanceFromCenter) > (totalWidth / 2)) {
         const xTranslation = -totalWidth * distanceFromCenterSign;
-        this.adjustSlides_(
-          targetSlide, [targetSlide], 1, new Vector2d(xTranslation, 0));
+        this.dragAdjustments_.set(carousel, new Vector2d(xTranslation, 0));
       }
+
+      this.adjustSlides_(
+        targetSlide, [targetSlide], 1, this.dragAdjustments_.get(carousel));
     }
 
     const [slidesBeforeActive, slidesAfterActive] =
@@ -324,6 +330,7 @@ class PhysicalSlide implements ITransition {
   }
 
   private endInteraction_(event: DragEnd, carousel: ICarousel): void {
+    this.dragAdjustments_.delete(carousel);
     carousel.endInteraction(SLIDE_INTERACTION);
     const draggable = event.getTarget();
     draggable
