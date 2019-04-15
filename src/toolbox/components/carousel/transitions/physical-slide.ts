@@ -4,7 +4,7 @@ import {DragStart}  from '../../draggable/events/drag-start';
 import {FixedYConstraint}  from '../../../utils/math/geometry/2d-constraints/fixed-y';
 import {Vector2d}  from '../../../utils/math/geometry/vector-2d';
 import {eventHandler}  from '../../../utils/event/event-handler';
-import {getVisibleDistanceBetweenElementCenters}  from '../../../utils/dom/position/get-visible-distance-between-element-centers';
+import {getVisibleDistanceBetweenElementCenters}  from '../../../utils/dom/position/horizontal/get-visible-distance-between-element-centers';
 import {renderLoop}  from '../../../utils/render-loop';
 import {translate2d}  from '../../../utils/dom/position/translate-2d';
 import {ICarousel, ITransition} from "../interfaces";
@@ -20,6 +20,7 @@ import {getSign} from "../../../utils/math/get-sign";
 import {split} from "../../../utils/array/split";
 import {ZERO_VECTOR_2D} from "../../../utils/math/geometry/zero-vector-2d";
 import {IPhysicalSlideConfig} from "./i-physical-slide-config";
+import {isVisible} from '../../../utils/dom/position/is-visible';
 
 const MAX_DRAG_VELOCITY = 10000;
 const SLIDE_INTERACTION = Symbol('Physical Slide Interaction');
@@ -122,7 +123,7 @@ class PhysicalSlide implements ITransition {
   ): Vector2d {
     const distance =
       getVisibleDistanceBetweenElementCenters(target, carousel.getContainer());
-    return new Vector2d(distance.x, 0);
+    return new Vector2d(distance, 0);
   }
 
   public renderLoop(carousel: ICarousel): void {
@@ -142,7 +143,7 @@ class PhysicalSlide implements ITransition {
   ): number {
     const distanceFromCenter =
       getVisibleDistanceBetweenElementCenters(target, carousel.getContainer());
-    return -distanceFromCenter.x
+    return -distanceFromCenter;
   }
 
   private transitionToTarget_(carousel: ICarousel) {
@@ -200,19 +201,29 @@ class PhysicalSlide implements ITransition {
   private adjustSplit_(
     carousel: ICarousel,
     target: HTMLElement = null,
-    adjustment: Vector2d = ZERO_VECTOR_2D
+    rawAdjustment: Vector2d = ZERO_VECTOR_2D
   ): void {
-
-    // if (carousel.allowsLooping()) {
-    //   // If the main element is off screen then we need to reset the adjustment
-    //   // by a viewport width.
-    //   if (!isVisible(target)) {
-    //
-    //   }
-    // }
 
     const activeSlide = carousel.getActiveSlide();
     const targetSlide = target ? target : activeSlide;
+
+    const totalWidth =
+      carousel.getSlides()
+        .reduce((total, slide) => total + slide.offsetWidth, 0);
+
+    const distanceFromCenter =
+      getVisibleDistanceBetweenElementCenters(targetSlide);
+    const distanceFromCenterSign = getSign(distanceFromCenter);
+    const requiresReset = Math.abs(distanceFromCenter) > (totalWidth / 2);
+
+    // If the main element is off screen then we need to reset the adjustment
+    // by a carousel width.
+    const adjustment =
+      carousel.allowsLooping() && requiresReset ?
+        new Vector2d(
+          rawAdjustment.x - (totalWidth * distanceFromCenterSign),
+          rawAdjustment.y) :
+        rawAdjustment;
 
     const [slidesBeforeActive, slidesAfterActive] =
       PhysicalSlide.getHalves_(carousel, activeSlide);
@@ -275,7 +286,7 @@ class PhysicalSlide implements ITransition {
       slideToAdjust.offsetWidth / 2 +
       activeSlide.offsetWidth / 2 +
       sumOffsetWidths(...previousSlides));
-    return desiredDistance - currentOffset.x;
+    return desiredDistance - currentOffset;
   }
 
   private adjustSlidesBefore_(
@@ -366,7 +377,7 @@ class PhysicalSlide implements ITransition {
   public hasTransitionedTo(slide: HTMLElement, carousel: ICarousel): boolean {
     const distance =
       getVisibleDistanceBetweenElementCenters(slide, carousel.getContainer());
-    return distance.x === 0
+    return distance === 0
   }
 }
 
