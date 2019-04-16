@@ -206,6 +206,8 @@ class PhysicalSlide implements ITransition {
     const activeSlide = carousel.getActiveSlide();
     const targetSlide = target ? target : activeSlide;
     const loopedSlides = new Set();
+    const loopedTranslation =
+      DynamicDefaultMap.usingFunction<HTMLElement, number>(() => 0);
 
     if (carousel.allowsLooping()) {
       const slides = carousel.getSlides();
@@ -231,6 +233,7 @@ class PhysicalSlide implements ITransition {
           ) {
             this.draggableBySlide_.get(slide)
               .adjustNextFrame(new Vector2d(xTranslation, 0));
+            loopedTranslation.set(slide, xTranslation);
             loopedSlides.add(slide);
           }
         }
@@ -245,7 +248,7 @@ class PhysicalSlide implements ITransition {
         .reduce(
           (slidesByDistance, slide) => {
             const distance =
-              getVisibleDistanceBetweenElementCenters(slide, targetSlide);
+              getVisibleDistanceBetweenElementCenters(targetSlide, slide);
             slidesByDistance.set(distance, slide);
             return slidesByDistance;
           },
