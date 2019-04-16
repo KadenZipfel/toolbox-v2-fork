@@ -205,6 +205,7 @@ class PhysicalSlide implements ITransition {
 
     const activeSlide = carousel.getActiveSlide();
     const targetSlide = target ? target : activeSlide;
+    const loopedSlides = new Set();
 
     if (carousel.allowsLooping()) {
       const slides = carousel.getSlides();
@@ -230,38 +231,44 @@ class PhysicalSlide implements ITransition {
           ) {
             this.draggableBySlide_.get(slide)
               .adjustNextFrame(new Vector2d(xTranslation, 0));
+            loopedSlides.add(slide);
           }
         }
       });
-    } else {
-      const [slidesBeforeActive, slidesAfterActive] =
-        PhysicalSlide.getHalves_(carousel, activeSlide);
-      const reOrderedSlides =
-        [...slidesBeforeActive, activeSlide, ...slidesAfterActive];
-
-      const activeIndex = reOrderedSlides.indexOf(activeSlide);
-      const targetIndex = reOrderedSlides.indexOf(targetSlide);
-      const diff = activeIndex - targetIndex;
-
-      const [slidesBefore, slidesAfter] =
-        PhysicalSlide.getHalves_(carousel, targetSlide);
-
-      if (diff !== 0) {
-        const shiftFunction =
-          diff > 0 ?
-            () => slidesAfter.push(slidesBefore.shift()) :
-            () => slidesBefore.unshift(slidesAfter.pop());
-
-        const absDiff =
-          Math.min(Math.abs(diff), slidesBefore.length, slidesAfter.length);
-        for (let i = 0; i < absDiff; i++) {
-          shiftFunction();
-        }
-      }
-
-      this.adjustSlidesBefore_(targetSlide, slidesBefore, adjustment);
-      this.adjustSlidesAfter_(targetSlide, slidesAfter, adjustment);
     }
+
+    const [slidesBeforeActive, slidesAfterActive] =
+      PhysicalSlide.getHalves_(carousel, activeSlide);
+    const reOrderedSlides =
+      [...slidesBeforeActive, activeSlide, ...slidesAfterActive];
+
+    const activeIndex = reOrderedSlides.indexOf(activeSlide);
+    const targetIndex = reOrderedSlides.indexOf(targetSlide);
+    const diff = activeIndex - targetIndex;
+
+    const [slidesBefore, slidesAfter] =
+      PhysicalSlide.getHalves_(carousel, targetSlide);
+
+    if (diff !== 0) {
+      const shiftFunction =
+        diff > 0 ?
+          () => slidesAfter.push(slidesBefore.shift()) :
+          () => slidesBefore.unshift(slidesAfter.pop());
+
+      const absDiff =
+        Math.min(Math.abs(diff), slidesBefore.length, slidesAfter.length);
+      for (let i = 0; i < absDiff; i++) {
+        shiftFunction();
+      }
+    }
+
+    const filteredSlidesBefore =
+      slidesBefore.filter((slide) => !loopedSlides.has(slide));
+    const filteredSlidesAfter =
+      slidesAfter.filter((slide) => !loopedSlides.has(slide));
+
+    this.adjustSlidesBefore_(targetSlide, filteredSlidesBefore, adjustment);
+    this.adjustSlidesAfter_(targetSlide, filteredSlidesAfter, adjustment);
   }
 
   private getSlideAdjustments_(
