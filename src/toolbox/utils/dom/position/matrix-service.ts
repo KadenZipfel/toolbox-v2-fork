@@ -29,6 +29,16 @@ class MatrixService {
     return this.alteredMatrix_.get(element);
   }
 
+  public getAlteredXTranslation(element: HTMLElement) {
+    return this.getAlteredMatrix(element).getTranslateX() -
+      this.getCleanMatrix(element).getTranslateX();
+  }
+
+  public getAlteredYTranslation(element: HTMLElement) {
+    return this.getAlteredMatrix(element).getTranslateY() -
+      this.getCleanMatrix(element).getTranslateY();
+  }
+
   public translate(element: HTMLElement, vector: {x: number, y: number}): void {
     this.alteredMatrix_.set(
       element, this.alteredMatrix_.get(element).translate(vector));

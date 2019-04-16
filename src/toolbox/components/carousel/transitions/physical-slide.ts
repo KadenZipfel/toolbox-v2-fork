@@ -17,9 +17,13 @@ import {getSign} from "../../../utils/math/get-sign";
 import {ZERO_VECTOR_2D} from "../../../utils/math/geometry/zero-vector-2d";
 import {IPhysicalSlideConfig} from "./i-physical-slide-config";
 import {reverseMap} from "../../../utils/map/reverse-map";
+import {MatrixService} from "../../../utils/dom/position/matrix-service";
 
 const MAX_DRAG_VELOCITY = 10000;
 const SLIDE_INTERACTION = Symbol('Physical Slide Interaction');
+
+// Micro-optimization
+const matrixService = MatrixService.getSingleton();
 
 class TransitionTarget {
   private readonly target_: HTMLElement;
@@ -171,13 +175,18 @@ class PhysicalSlide implements ITransition {
   private adjustSplitForLoop_(
     carousel: ICarousel, adjustment: Vector2d = ZERO_VECTOR_2D
   ): void {
+    if (!carousel.allowsLooping()) {
+      return;
+    }
+
     const slides = carousel.getSlides();
     const totalWidth =
       slides.reduce((total, slide) => total + slide.offsetWidth, 0);
 
     slides.forEach((slide) => {
       const distanceFromCenter =
-        getVisibleDistanceBetweenElementCenters(slide) + adjustment.x;
+        getVisibleDistanceBetweenElementCenters(slide) +
+        matrixService.getAlteredXTranslation(slide);
       const distanceFromCenterSign = getSign(distanceFromCenter);
       const isOffscreen = Math.abs(distanceFromCenter) > (totalWidth / 2);
 
@@ -199,15 +208,23 @@ class PhysicalSlide implements ITransition {
     });
   }
 
+  private applyAdjustment_(
+    carousel: ICarousel,
+    target: HTMLElement = null,
+    adjustment: Vector2d = ZERO_VECTOR_2D
+  ): void {
+    carousel.getSlides()
+      .filter((slide) => slide !== target)
+      .forEach((slide) => translate2d(slide, adjustment));
+  }
+
   private adjustSplit_(
     carousel: ICarousel,
     target: HTMLElement = null,
     adjustment: Vector2d = ZERO_VECTOR_2D
   ): void {
-
-    if (carousel.allowsLooping()) {
-      this.adjustSplitForLoop_(carousel, adjustment);
-    }
+    // No matter what we need to apply the adjustment
+    this.applyAdjustment_(carousel, target, adjustment);
 
     const activeSlide = carousel.getActiveSlide();
     const targetSlide = target ? target : activeSlide;
@@ -222,6 +239,8 @@ class PhysicalSlide implements ITransition {
       targetSlide, slidesBefore, distancesFromTarget, adjustment.x, -1);
     this.adjustSlides_(
       targetSlide, slidesAfter, distancesFromTarget, adjustment.x, 1);
+
+    this.adjustSplitForLoop_(carousel, adjustment);
   }
 
   private splitSlides_(
