@@ -256,36 +256,6 @@ class PhysicalSlide implements ITransition {
         slidesToAdjust.delete(slideToAdjust);
       }
     }
-
-    // const slidesByDistance = reverseMap(distancesFromTarget);
-    //
-    // const [slidesBefore, slidesAfter] = this.splitSlides_(slidesByDistance);
-    //
-    // this.adjustSlidesForSplit_(
-    //   carousel, targetSlide, slidesBefore, distancesFromTarget, -1);
-    // this.adjustSlidesForSplit_(
-    //   carousel, targetSlide, slidesAfter, distancesFromTarget, 1);
-  }
-
-  private splitSlides_(
-    slidesByDistance: Map<number, HTMLElement>
-  ): [HTMLElement[], HTMLElement[]] {
-
-    const slidesBefore: HTMLElement[] = [];
-    const slidesAfter: HTMLElement[] = [];
-
-    const sortedDistances = Array.from(slidesByDistance.keys()).sort();
-
-    sortedDistances.forEach((distance) => {
-      const slide = slidesByDistance.get(distance);
-      if (distance < 0) {
-        slidesBefore.unshift(slide);
-      } else {
-        slidesAfter.push(slide);
-      }
-    });
-
-    return [slidesBefore, slidesAfter];
   }
 
   private getDistancesFromTarget_(
@@ -294,30 +264,12 @@ class PhysicalSlide implements ITransition {
     const distancesFromTarget = new Map<HTMLElement, number>();
     carousel.getSlides().forEach(
       (slide) => {
-        if (slide === targetSlide) {
-          return;
-        }
-
         const distance =
           getVisibleDistanceBetweenElementCenters(slide, targetSlide) -
           matrixService.getAlteredXTranslation(targetSlide);
         distancesFromTarget.set(slide, distance);
       });
     return distancesFromTarget;
-  }
-
-  private adjustSlidesForSplit_(
-    carousel: ICarousel,
-    targetSlide: HTMLElement,
-    slides: HTMLElement[],
-    distancesFromTarget: Map<HTMLElement, number>,
-    direction: number
-  ) {
-    slides.forEach(
-      (slide) => {
-        this.adjustSlideForSplit_(
-          carousel, targetSlide, slide, distancesFromTarget, direction);
-      });
   }
 
   private adjustSlideForSplit_(
@@ -353,7 +305,7 @@ class PhysicalSlide implements ITransition {
     const inBetweenWidth = sumOffsetWidthsFromArray(inBetweenSlides);
     const halfSlideWidth = slide.offsetWidth / 2;
     const halfTargetSlideWidth = targetSlide.offsetWidth / 2;
-    return halfSlideWidth + inBetweenWidth + halfTargetSlideWidth;
+    return -(halfSlideWidth + inBetweenWidth + halfTargetSlideWidth) * direction;
   }
 
   private startInteraction_(event: DragStart, carousel: ICarousel): void {
