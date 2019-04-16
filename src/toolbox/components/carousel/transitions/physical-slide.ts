@@ -316,9 +316,9 @@ class PhysicalSlide implements ITransition {
     const inBetweenSlides =
       loopSlice(
         carousel.getSlides(),
-        carousel.getSlideIndex(slide) + direction,
+        carousel.getSlideIndex(slide) - direction,
         carousel.getSlideIndex(targetSlide),
-        direction);
+        -direction);
     const inBetweenWidth = sumOffsetWidthsFromArray(inBetweenSlides);
     const halfSlideWidth = slide.offsetWidth / 2;
     const halfTargetSlideWidth = targetSlide.offsetWidth / 2;
