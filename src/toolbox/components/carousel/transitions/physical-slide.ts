@@ -16,7 +16,6 @@ import {Physical2d} from "../../physical/physical-2d";
 import {getSign} from "../../../utils/math/get-sign";
 import {ZERO_VECTOR_2D} from "../../../utils/math/geometry/zero-vector-2d";
 import {IPhysicalSlideConfig} from "./i-physical-slide-config";
-import {reverseMap} from "../../../utils/map/reverse-map";
 import {MatrixService} from "../../../utils/dom/position/matrix-service";
 import {loopSlice} from "../../../utils/array/loop-slice";
 import {sumOffsetWidthsFromArray} from "../../../utils/dom/position/sum-offset-widths-from-array";
