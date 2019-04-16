@@ -260,14 +260,42 @@ class PhysicalSlide implements ITransition {
     sortedDistances.forEach((distance) => {
       const slide = slidesByDistance.get(distance);
       if (distance > 0) {
-        slidesBefore.push(slide);
+        slidesBefore.unshift(slide);
       } else {
         slidesAfter.push(slide);
       }
     });
 
-    this.adjustSlidesBefore_(targetSlide, slidesBefore, adjustment);
-    this.adjustSlidesAfter_(targetSlide, slidesAfter, adjustment);
+    let targetOffset = targetSlide.offsetWidth / 2;
+    slidesBefore.forEach((slide) => {
+      const halfWidth = slide.offsetWidth / 2;
+      const distance =
+        getVisibleDistanceBetweenElementCenters(targetSlide, slide);
+      targetOffset += halfWidth;
+      const difference = targetOffset - distance;
+      if (difference !== 0) {
+        this.draggableBySlide_.get(slide)
+          .adjustNextFrame(new Vector2d(difference, 0));
+      }
+      targetOffset += halfWidth;
+    });
+
+    targetOffset = -targetSlide.offsetWidth / 2;
+    slidesAfter.forEach((slide) => {
+      const halfWidth = -slide.offsetWidth / 2;
+      const distance =
+        getVisibleDistanceBetweenElementCenters(targetSlide, slide);
+      targetOffset += halfWidth;
+      const difference = targetOffset - distance;
+      if (difference !== 0) {
+        this.draggableBySlide_.get(slide)
+          .adjustNextFrame(new Vector2d(difference, 0));
+      }
+      targetOffset += halfWidth;
+    });
+
+    // this.adjustSlidesBefore_(targetSlide, slidesBefore, adjustment);
+    // this.adjustSlidesAfter_(targetSlide, slidesAfter, adjustment);
   }
 
   private getSlideAdjustments_(
