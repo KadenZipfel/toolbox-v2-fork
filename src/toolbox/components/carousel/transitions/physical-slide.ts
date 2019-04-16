@@ -245,8 +245,8 @@ class PhysicalSlide implements ITransition {
         const slideToAdjust = slides[leftIndex];
         this.adjustSlideForSplit_(
           carousel, targetSlide, slideToAdjust, distancesFromTarget, -1);
-       distanceOnRightToCover -= slideToAdjust.offsetWidth;
-       slidesToAdjust.delete(slideToAdjust);
+        distanceOnLeftToCover -= slideToAdjust.offsetWidth;
+        slidesToAdjust.delete(slideToAdjust);
       } else {
         rightIndex = wrapIndex(rightIndex + 1, slideCount);
         const slideToAdjust = slides[rightIndex];
