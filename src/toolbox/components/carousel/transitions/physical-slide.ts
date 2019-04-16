@@ -12,12 +12,8 @@ import {getClosestToCenter} from "../../../utils/dom/position/get-closest-to-cen
 import {PhysicallyDraggable} from "../../draggable/physically-draggable";
 import {DraggableFixedYConstraint} from "../../draggable/constraints/fixed-y";
 import {DynamicDefaultMap} from "../../../utils/map/dynamic-default";
-import {Slide} from "./slide";
-import {splitEvenlyOnItem} from "../../../utils/array/split-evenly-on-item";
-import {sumOffsetWidths} from "../../../utils/dom/position/sum-offset-widths";
 import {Physical2d} from "../../physical/physical-2d";
 import {getSign} from "../../../utils/math/get-sign";
-import {split} from "../../../utils/array/split";
 import {ZERO_VECTOR_2D} from "../../../utils/math/geometry/zero-vector-2d";
 import {IPhysicalSlideConfig} from "./i-physical-slide-config";
 
@@ -79,18 +75,18 @@ class PhysicalSlide implements ITransition {
   }
 
   public init(activeSlide: HTMLElement, carousel: ICarousel): void {
-    PhysicalSlide.initActiveSlide_(activeSlide, carousel);
+    this.initActiveSlide_(activeSlide, carousel);
     this.initDraggableSlides_(carousel);
   }
 
-  private static initActiveSlide_(
+  private initActiveSlide_(
     target: HTMLElement, carousel: ICarousel
   ): void {
     renderLoop.measure(() => {
       const translation =
         PhysicalSlide.getTranslationFromCenter_(target, carousel);
       translate2d(target, translation);
-      Slide.transitionAroundActiveSlide(target, carousel, translation);
+      this.adjustSplit_(carousel, target, translation);
     });
   }
 
@@ -205,7 +201,7 @@ class PhysicalSlide implements ITransition {
 
       slides.forEach((slide) => {
         const distanceFromCenter =
-          getVisibleDistanceBetweenElementCenters(slide);
+          getVisibleDistanceBetweenElementCenters(slide) + adjustment.x;
         const distanceFromCenterSign = getSign(distanceFromCenter);
         const isOffscreen = Math.abs(distanceFromCenter) > (totalWidth / 2);
 
@@ -257,14 +253,17 @@ class PhysicalSlide implements ITransition {
       }
     });
 
-    this.adjustSlides_(targetSlide, slidesBefore, distancesFromTarget, 1);
-    this.adjustSlides_(targetSlide, slidesAfter, distancesFromTarget, -1);
+    this.adjustSlides_(
+      targetSlide, slidesBefore, distancesFromTarget, adjustment.x, 1);
+    this.adjustSlides_(
+      targetSlide, slidesAfter, distancesFromTarget, adjustment.x, -1);
   }
 
   private adjustSlides_(
     targetSlide: HTMLElement,
     slides: HTMLElement[],
     distancesFromTarget: Map<HTMLElement, number>,
+    adjustment: number,
     direction: number
   ) {
     let targetOffset = direction * targetSlide.offsetWidth / 2;
@@ -273,10 +272,10 @@ class PhysicalSlide implements ITransition {
       const distance = distancesFromTarget.get(slide);
       targetOffset += halfWidth;
 
-      const difference = targetOffset - (distance * direction);
-      if (difference !== 0) {
+      const difference = targetOffset - distance;
+      if (Math.abs(difference) > 1) {
         this.draggableBySlide_.get(slide)
-          .adjustNextFrame(new Vector2d(difference, 0));
+          .adjustNextFrame(new Vector2d(difference + adjustment, 0));
       }
       targetOffset += halfWidth;
     });
