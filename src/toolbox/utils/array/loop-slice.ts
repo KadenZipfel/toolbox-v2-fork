@@ -1,12 +1,5 @@
 import {getSign} from "../math/get-sign";
-
-function wrapIndex(index: number, length: number): number {
-  if (index < 0) {
-    return length + (index % length);
-  } else {
-    return index % length;
-  }
-}
+import {wrapIndex} from "./wrap-index";
 
 function loopSlice<T>(
   values: T[], startIndex: number, endIndex: number, direction: number
