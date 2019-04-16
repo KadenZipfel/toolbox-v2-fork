@@ -220,12 +220,13 @@ class PhysicalSlide implements ITransition {
         const xTranslation = -totalWidth * distanceFromCenterSign;
         const slidesToTranslate =
           distanceFromCenterSign === -1 ?
-            slides.slice(0, carousel.getSlideIndex(targetSlide)) :
-            slides.slice(carousel.getSlideIndex(targetSlide) + 1);
+            slides.slice(0, carousel.getSlideIndex(targetSlide) + 1) :
+            slides.slice(carousel.getSlideIndex(targetSlide));
         slidesToTranslate.forEach((slide) => {
           this.draggableBySlide_.get(slide)
             .adjustNextFrame(new Vector2d(xTranslation, 0));
         });
+        return;
       }
     }
 
