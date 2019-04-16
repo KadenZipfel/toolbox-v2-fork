@@ -186,17 +186,6 @@ class PhysicalSlide implements ITransition {
     draggable.setVelocity(new Vector2d(adjustedVelocity, 0));
   }
 
-  private static getHalves_(
-    carousel: ICarousel, targetSlide: HTMLElement
-  ): [HTMLElement[], HTMLElement[]] {
-    if (carousel.allowsLooping()) {
-      return splitEvenlyOnItem(carousel.getSlides(), targetSlide, true);
-    } else {
-      return <[HTMLElement[], HTMLElement[]]>split(
-        carousel.getSlides(), targetSlide);
-    }
-  }
-
   private adjustSplit_(
     carousel: ICarousel,
     target: HTMLElement = null,
@@ -296,73 +285,6 @@ class PhysicalSlide implements ITransition {
 
     // this.adjustSlidesBefore_(targetSlide, slidesBefore, adjustment);
     // this.adjustSlidesAfter_(targetSlide, slidesAfter, adjustment);
-  }
-
-  private getSlideAdjustments_(
-    activeSlide: HTMLElement, slides: HTMLElement[], direction: number
-  ): Map<HTMLElement, number> {
-    let previousSlides: HTMLElement[] = [];
-    return slides
-      .reduce(
-        (map, slide) => {
-          const adjustment =
-            this.getSlideAdjustment_(
-              slide, activeSlide, previousSlides, direction);
-          previousSlides = [...previousSlides, slide];
-          map.set(slide, adjustment);
-          return map;
-        },
-        new Map<HTMLElement, number>()
-      );
-  }
-
-  private getSlideAdjustment_(
-    slideToAdjust: HTMLElement,
-    activeSlide: HTMLElement,
-    previousSlides: HTMLElement[],
-    direction: number
-  ): number {
-    const multiplier = getSign(direction);
-    const currentOffset =
-      getVisibleDistanceBetweenElementCenters(slideToAdjust, activeSlide);
-    const desiredDistance =
-      multiplier * (
-      slideToAdjust.offsetWidth / 2 +
-      activeSlide.offsetWidth / 2 +
-      sumOffsetWidths(...previousSlides));
-    return desiredDistance - currentOffset;
-  }
-
-  private adjustSlidesBefore_(
-    activeSlide: HTMLElement,
-    slides: HTMLElement[],
-    additionalTranslation: Vector2d
-  ) {
-    this.adjustSlides_(
-      activeSlide, slides.reverse(), -1, additionalTranslation);
-  }
-
-  private adjustSlidesAfter_(
-    activeSlide: HTMLElement,
-    slides: HTMLElement[],
-    additionalTranslation: Vector2d
-  ) {
-    this.adjustSlides_(activeSlide, slides, 1, additionalTranslation);
-  }
-
-  private adjustSlides_(
-    activeSlide: HTMLElement,
-    slides: HTMLElement[],
-    direction: number,
-    additionalTranslation: Vector2d
-  ): void {
-      this.getSlideAdjustments_(activeSlide, slides, direction).forEach(
-        (adjustment, slide) => {
-          this.draggableBySlide_
-            .get(slide)
-            .adjustNextFrame(
-              new Vector2d(adjustment + additionalTranslation.x, 0));
-        });
   }
 
   private startInteraction_(event: DragStart, carousel: ICarousel): void {
