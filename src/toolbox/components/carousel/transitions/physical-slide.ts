@@ -247,9 +247,11 @@ class PhysicalSlide implements ITransition {
       carousel.getSlides()
         .reduce(
           (slidesByDistance, slide) => {
-            const distance =
-              getVisibleDistanceBetweenElementCenters(targetSlide, slide);
-            slidesByDistance.set(distance, slide);
+            if (slide !== targetSlide) {
+              const distance =
+                getVisibleDistanceBetweenElementCenters(targetSlide, slide);
+              slidesByDistance.set(distance, slide);
+            }
             return slidesByDistance;
           },
         new Map<number, HTMLElement>());
