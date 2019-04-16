@@ -237,38 +237,32 @@ class PhysicalSlide implements ITransition {
       });
     }
 
-    const [slidesBeforeActive, slidesAfterActive] =
-      PhysicalSlide.getHalves_(carousel, activeSlide);
-    const reOrderedSlides =
-      [...slidesBeforeActive, activeSlide, ...slidesAfterActive];
+    const slidesBefore: HTMLElement[] = [];
+    const slidesAfter: HTMLElement[] = [];
 
-    const activeIndex = reOrderedSlides.indexOf(activeSlide);
-    const targetIndex = reOrderedSlides.indexOf(targetSlide);
-    const diff = activeIndex - targetIndex;
+    const slidesByDistance =
+      carousel.getSlides()
+        .reduce(
+          (slidesByDistance, slide) => {
+            const distance =
+              getVisibleDistanceBetweenElementCenters(slide, targetSlide);
+            slidesByDistance.set(distance, slide);
+            return slidesByDistance;
+          },
+        new Map<number, HTMLElement>());
+    const sortedDistances = Array.from(slidesByDistance.keys()).sort();
 
-    const [slidesBefore, slidesAfter] =
-      PhysicalSlide.getHalves_(carousel, targetSlide);
-
-    if (diff !== 0) {
-      const shiftFunction =
-        diff > 0 ?
-          () => slidesAfter.push(slidesBefore.shift()) :
-          () => slidesBefore.unshift(slidesAfter.pop());
-
-      const absDiff =
-        Math.min(Math.abs(diff), slidesBefore.length, slidesAfter.length);
-      for (let i = 0; i < absDiff; i++) {
-        shiftFunction();
+    sortedDistances.forEach((distance) => {
+      const slide = slidesByDistance.get(distance);
+      if (distance > 0) {
+        slidesBefore.push(slide);
+      } else {
+        slidesAfter.push(slide);
       }
-    }
+    });
 
-    const filteredSlidesBefore =
-      slidesBefore.filter((slide) => !loopedSlides.has(slide));
-    const filteredSlidesAfter =
-      slidesAfter.filter((slide) => !loopedSlides.has(slide));
-
-    this.adjustSlidesBefore_(targetSlide, filteredSlidesBefore, adjustment);
-    this.adjustSlidesAfter_(targetSlide, filteredSlidesAfter, adjustment);
+    this.adjustSlidesBefore_(targetSlide, slidesBefore, adjustment);
+    this.adjustSlidesAfter_(targetSlide, slidesAfter, adjustment);
   }
 
   private getSlideAdjustments_(
