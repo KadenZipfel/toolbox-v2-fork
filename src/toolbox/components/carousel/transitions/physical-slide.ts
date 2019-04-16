@@ -16,6 +16,7 @@ import {Physical2d} from "../../physical/physical-2d";
 import {getSign} from "../../../utils/math/get-sign";
 import {ZERO_VECTOR_2D} from "../../../utils/math/geometry/zero-vector-2d";
 import {IPhysicalSlideConfig} from "./i-physical-slide-config";
+import {reverseMap} from "../../../utils/map/reverse-map";
 
 const MAX_DRAG_VELOCITY = 10000;
 const SLIDE_INTERACTION = Symbol('Physical Slide Interaction');
@@ -167,54 +168,87 @@ class PhysicalSlide implements ITransition {
     draggable.setVelocity(new Vector2d(adjustedVelocity, 0));
   }
 
+  private adjustSplitForLoop_(
+    carousel: ICarousel, adjustment: Vector2d = ZERO_VECTOR_2D
+  ): void {
+    const slides = carousel.getSlides();
+    const totalWidth =
+      slides.reduce((total, slide) => total + slide.offsetWidth, 0);
+
+    slides.forEach((slide) => {
+      const distanceFromCenter =
+        getVisibleDistanceBetweenElementCenters(slide) + adjustment.x;
+      const distanceFromCenterSign = getSign(distanceFromCenter);
+      const isOffscreen = Math.abs(distanceFromCenter) > (totalWidth / 2);
+
+      // Reset during drag if the drag has gone exceedingly far
+      if (isOffscreen) {
+        const xTranslation = -totalWidth * distanceFromCenterSign;
+        const translatedDistanceFromCenter =
+          (window.innerHeight * distanceFromCenterSign) +
+          distanceFromCenter + xTranslation;
+
+        if (
+          Math.abs(translatedDistanceFromCenter) <
+          Math.abs(distanceFromCenter)
+        ) {
+          this.draggableBySlide_.get(slide)
+            .adjustNextFrame(new Vector2d(xTranslation, 0));
+        }
+      }
+    });
+  }
+
   private adjustSplit_(
     carousel: ICarousel,
     target: HTMLElement = null,
     adjustment: Vector2d = ZERO_VECTOR_2D
   ): void {
 
+    if (carousel.allowsLooping()) {
+      this.adjustSplitForLoop_(carousel, adjustment);
+    }
+
     const activeSlide = carousel.getActiveSlide();
     const targetSlide = target ? target : activeSlide;
-    const loopedSlides = new Set();
-    const loopedTranslation =
-      DynamicDefaultMap.usingFunction<HTMLElement, number>(() => 0);
 
-    if (carousel.allowsLooping()) {
-      const slides = carousel.getSlides();
-      const totalWidth =
-        slides.reduce((total, slide) => total + slide.offsetWidth, 0);
+    const distancesFromTarget =
+      this.getDistancesFromTarget_(carousel, targetSlide);
+    const slidesByDistance = reverseMap(distancesFromTarget);
 
-      slides.forEach((slide) => {
-        const distanceFromCenter =
-          getVisibleDistanceBetweenElementCenters(slide) + adjustment.x;
-        const distanceFromCenterSign = getSign(distanceFromCenter);
-        const isOffscreen = Math.abs(distanceFromCenter) > (totalWidth / 2);
+    const [slidesBefore, slidesAfter] = this.splitSlides_(slidesByDistance);
 
-        // Reset during drag if the drag has gone exceedingly far
-        if (isOffscreen) {
-          const xTranslation = -totalWidth * distanceFromCenterSign;
-          const translatedDistanceFromCenter =
-            (window.innerHeight * distanceFromCenterSign) +
-            distanceFromCenter + xTranslation;
+    this.adjustSlides_(
+      targetSlide, slidesBefore, distancesFromTarget, adjustment.x, 1);
+    this.adjustSlides_(
+      targetSlide, slidesAfter, distancesFromTarget, adjustment.x, -1);
+  }
 
-          if (
-            Math.abs(translatedDistanceFromCenter) <
-            Math.abs(distanceFromCenter)
-          ) {
-            this.draggableBySlide_.get(slide)
-              .adjustNextFrame(new Vector2d(xTranslation, 0));
-            loopedTranslation.set(slide, xTranslation);
-            loopedSlides.add(slide);
-          }
-        }
-      });
-    }
+  private splitSlides_(
+    slidesByDistance: Map<number, HTMLElement>
+  ): [HTMLElement[], HTMLElement[]] {
 
     const slidesBefore: HTMLElement[] = [];
     const slidesAfter: HTMLElement[] = [];
 
+    const sortedDistances = Array.from(slidesByDistance.keys()).sort();
+
+    sortedDistances.forEach((distance) => {
+      const slide = slidesByDistance.get(distance);
+      if (distance < 0) {
+        slidesBefore.unshift(slide);
+      } else {
+        slidesAfter.push(slide);
+      }
+    });
+
+    return [slidesBefore, slidesAfter];
+  }
+
+  private getDistancesFromTarget_(
+    carousel: ICarousel, targetSlide: HTMLElement
+  ): Map<HTMLElement, number> {
     const distancesFromTarget = new Map<HTMLElement, number>();
-    const slidesByDistance = new Map<number, HTMLElement>();
     carousel.getSlides().forEach(
       (slide) => {
         if (slide === targetSlide) {
@@ -222,26 +256,10 @@ class PhysicalSlide implements ITransition {
         }
 
         const distance =
-          getVisibleDistanceBetweenElementCenters(targetSlide, slide);
+          getVisibleDistanceBetweenElementCenters(slide, targetSlide);
         distancesFromTarget.set(slide, distance);
-        slidesByDistance.set(distance, slide);
       });
-
-    const sortedDistances = Array.from(slidesByDistance.keys()).sort();
-
-    sortedDistances.forEach((distance) => {
-      const slide = slidesByDistance.get(distance);
-      if (distance > 0) {
-        slidesBefore.unshift(slide);
-      } else {
-        slidesAfter.push(slide);
-      }
-    });
-
-    this.adjustSlides_(
-      targetSlide, slidesBefore, distancesFromTarget, adjustment.x, 1);
-    this.adjustSlides_(
-      targetSlide, slidesAfter, distancesFromTarget, adjustment.x, -1);
+    return distancesFromTarget;
   }
 
   private adjustSlides_(

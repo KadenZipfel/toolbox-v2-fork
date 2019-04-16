@@ -5,7 +5,7 @@ function getVisibleDistanceBetweenElementCenters(
   container: HTMLElement = null
 ): number {
   return getVisibleDistanceBetweenElements(target, container) +
-    target.offsetWidth / 2 -
+    (target.offsetWidth / 2) -
     (container !== null ? container.offsetWidth : window.innerWidth) / 2;
 }
 
