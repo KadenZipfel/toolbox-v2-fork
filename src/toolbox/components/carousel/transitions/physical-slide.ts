@@ -18,6 +18,8 @@ import {ZERO_VECTOR_2D} from "../../../utils/math/geometry/zero-vector-2d";
 import {IPhysicalSlideConfig} from "./i-physical-slide-config";
 import {reverseMap} from "../../../utils/map/reverse-map";
 import {MatrixService} from "../../../utils/dom/position/matrix-service";
+import {loopSlice} from "../../../utils/array/loop-slice";
+import {sumOffsetWidthsFromArray} from "../../../utils/dom/position/sum-offset-widths-from-array";
 
 const MAX_DRAG_VELOCITY = 10000;
 const SLIDE_INTERACTION = Symbol('Physical Slide Interaction');
@@ -208,23 +210,23 @@ class PhysicalSlide implements ITransition {
     });
   }
 
-  private applyAdjustment_(
+  private applyDragAdjustment_(
     carousel: ICarousel,
     target: HTMLElement = null,
-    adjustment: Vector2d = ZERO_VECTOR_2D
+    dragAdjustment: Vector2d = ZERO_VECTOR_2D
   ): void {
     carousel.getSlides()
       .filter((slide) => slide !== target)
-      .forEach((slide) => translate2d(slide, adjustment));
+      .forEach((slide) => translate2d(slide, dragAdjustment));
   }
 
   private adjustSplit_(
     carousel: ICarousel,
     target: HTMLElement = null,
-    adjustment: Vector2d = ZERO_VECTOR_2D
+    dragAdjustment: Vector2d = ZERO_VECTOR_2D
   ): void {
-    // No matter what we need to apply the adjustment
-    this.applyAdjustment_(carousel, target, adjustment);
+    // No matter what we need to apply the drag adjustment
+    this.applyDragAdjustment_(carousel, target, dragAdjustment);
 
     const activeSlide = carousel.getActiveSlide();
     const targetSlide = target ? target : activeSlide;
@@ -235,12 +237,12 @@ class PhysicalSlide implements ITransition {
 
     const [slidesBefore, slidesAfter] = this.splitSlides_(slidesByDistance);
 
-    this.adjustSlides_(
-      targetSlide, slidesBefore, distancesFromTarget, adjustment.x, -1);
-    this.adjustSlides_(
-      targetSlide, slidesAfter, distancesFromTarget, adjustment.x, 1);
+    this.adjustSlidesForSplit_(
+      carousel, targetSlide, slidesBefore, distancesFromTarget, -1);
+    this.adjustSlidesForSplit_(
+      carousel, targetSlide, slidesAfter, distancesFromTarget, 1);
 
-    this.adjustSplitForLoop_(carousel, adjustment);
+    this.adjustSplitForLoop_(carousel, dragAdjustment);
   }
 
   private splitSlides_(
@@ -281,26 +283,54 @@ class PhysicalSlide implements ITransition {
     return distancesFromTarget;
   }
 
-  private adjustSlides_(
+  private adjustSlidesForSplit_(
+    carousel: ICarousel,
     targetSlide: HTMLElement,
     slides: HTMLElement[],
     distancesFromTarget: Map<HTMLElement, number>,
-    adjustment: number,
     direction: number
   ) {
-    let targetOffset = direction * targetSlide.offsetWidth / 2;
-    slides.forEach((slide) => {
-      const halfWidth = direction * slide.offsetWidth / 2;
-      const distance = distancesFromTarget.get(slide);
-      targetOffset += halfWidth;
+    slides.forEach(
+      (slide) => {
+        this.adjustSlideForSplit_(
+          carousel, targetSlide, slide, distancesFromTarget, direction);
+      });
+  }
 
-      const difference = targetOffset - distance;
-      if (Math.abs(difference) > 1) {
-        this.draggableBySlide_.get(slide)
-          .adjustNextFrame(new Vector2d(difference + adjustment, 0));
-      }
-      targetOffset += halfWidth;
-    });
+  private adjustSlideForSplit_(
+    carousel: ICarousel,
+    targetSlide: HTMLElement,
+    slide: HTMLElement,
+    distancesFromTarget: Map<HTMLElement, number>,
+    direction: number
+  ): void {
+    const targetOffset =
+      this.getTargetSplitOffset_(carousel, targetSlide, slide, direction);
+    const distance = distancesFromTarget.get(slide);
+
+    const difference = targetOffset - distance;
+    if (Math.abs(difference) > 1) {
+      this.draggableBySlide_.get(slide)
+        .adjustNextFrame(new Vector2d(difference, 0));
+    }
+  }
+
+  private getTargetSplitOffset_(
+    carousel: ICarousel,
+    targetSlide: HTMLElement,
+    slide: HTMLElement,
+    direction: number
+  ): number {
+    const inBetweenSlides =
+      loopSlice(
+        carousel.getSlides(),
+        carousel.getSlideIndex(slide) + direction,
+        carousel.getSlideIndex(targetSlide),
+        direction);
+    const inBetweenWidth = sumOffsetWidthsFromArray(inBetweenSlides);
+    const halfSlideWidth = slide.offsetWidth / 2;
+    const halfTargetSlideWidth = targetSlide.offsetWidth / 2;
+    return halfSlideWidth + inBetweenWidth + halfTargetSlideWidth;
   }
 
   private startInteraction_(event: DragStart, carousel: ICarousel): void {
