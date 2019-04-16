@@ -219,9 +219,9 @@ class PhysicalSlide implements ITransition {
     const [slidesBefore, slidesAfter] = this.splitSlides_(slidesByDistance);
 
     this.adjustSlides_(
-      targetSlide, slidesBefore, distancesFromTarget, adjustment.x, 1);
+      targetSlide, slidesBefore, distancesFromTarget, adjustment.x, -1);
     this.adjustSlides_(
-      targetSlide, slidesAfter, distancesFromTarget, adjustment.x, -1);
+      targetSlide, slidesAfter, distancesFromTarget, adjustment.x, 1);
   }
 
   private splitSlides_(
