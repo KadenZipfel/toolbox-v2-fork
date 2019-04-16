@@ -253,25 +253,23 @@ class PhysicalSlide implements ITransition {
       }
     });
 
-    let targetOffset = targetSlide.offsetWidth / 2;
-    slidesBefore.forEach((slide) => {
-      const halfWidth = slide.offsetWidth / 2;
-      const distance = distancesFromTarget.get(slide);
-      targetOffset += halfWidth;
-      const difference = targetOffset - distance;
-      if (difference !== 0) {
-        this.draggableBySlide_.get(slide)
-          .adjustNextFrame(new Vector2d(difference, 0));
-      }
-      targetOffset += halfWidth;
-    });
+    this.adjustSlides_(targetSlide, slidesBefore, distancesFromTarget, 1);
+    this.adjustSlides_(targetSlide, slidesAfter, distancesFromTarget, -1);
+  }
 
-    targetOffset = -targetSlide.offsetWidth / 2;
-    slidesAfter.forEach((slide) => {
-      const halfWidth = -slide.offsetWidth / 2;
+  private adjustSlides_(
+    targetSlide: HTMLElement,
+    slides: HTMLElement[],
+    distancesFromTarget: Map<HTMLElement, number>,
+    direction: number
+  ) {
+    let targetOffset = direction * targetSlide.offsetWidth / 2;
+    slides.forEach((slide) => {
+      const halfWidth = direction * slide.offsetWidth / 2;
       const distance = distancesFromTarget.get(slide);
       targetOffset += halfWidth;
-      const difference = targetOffset - distance;
+
+      const difference = targetOffset - (distance * direction);
       if (difference !== 0) {
         this.draggableBySlide_.get(slide)
           .adjustNextFrame(new Vector2d(difference, 0));
