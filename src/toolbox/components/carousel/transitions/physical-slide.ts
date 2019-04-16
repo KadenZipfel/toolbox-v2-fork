@@ -206,57 +206,62 @@ class PhysicalSlide implements ITransition {
     const activeSlide = carousel.getActiveSlide();
     const targetSlide = target ? target : activeSlide;
 
-    if (target !== null && carousel.allowsLooping()) {
+    if (carousel.allowsLooping()) {
       const slides = carousel.getSlides();
       const totalWidth =
         slides.reduce((total, slide) => total + slide.offsetWidth, 0);
-      const distanceFromCenter =
-        getVisibleDistanceBetweenElementCenters(targetSlide);
-      const distanceFromCenterSign = getSign(distanceFromCenter);
-      const isOffscreen = Math.abs(distanceFromCenter) > (totalWidth / 2);
 
-      // Reset during drag if the drag has gone exceedingly far
-      if (isOffscreen) {
-        const xTranslation = -totalWidth * distanceFromCenterSign;
-        const slidesToTranslate =
-          distanceFromCenterSign === -1 ?
-            slides.slice(0, carousel.getSlideIndex(targetSlide) + 1) :
-            slides.slice(carousel.getSlideIndex(targetSlide));
-        slidesToTranslate.forEach((slide) => {
-          this.draggableBySlide_.get(slide)
-            .adjustNextFrame(new Vector2d(xTranslation, 0));
-        });
-        return;
+      slides.forEach((slide) => {
+        const distanceFromCenter =
+          getVisibleDistanceBetweenElementCenters(slide);
+        const distanceFromCenterSign = getSign(distanceFromCenter);
+        const isOffscreen = Math.abs(distanceFromCenter) > (totalWidth / 2);
+
+        // Reset during drag if the drag has gone exceedingly far
+        if (isOffscreen) {
+          const xTranslation = -totalWidth * distanceFromCenterSign;
+          const translatedDistanceFromCenter =
+            (window.innerHeight * distanceFromCenterSign) +
+            distanceFromCenter + xTranslation;
+
+          if (
+            Math.abs(translatedDistanceFromCenter) <
+            Math.abs(distanceFromCenter)
+          ) {
+            this.draggableBySlide_.get(slide)
+              .adjustNextFrame(new Vector2d(xTranslation, 0));
+          }
+        }
+      });
+    } else {
+      const [slidesBeforeActive, slidesAfterActive] =
+        PhysicalSlide.getHalves_(carousel, activeSlide);
+      const reOrderedSlides =
+        [...slidesBeforeActive, activeSlide, ...slidesAfterActive];
+
+      const activeIndex = reOrderedSlides.indexOf(activeSlide);
+      const targetIndex = reOrderedSlides.indexOf(targetSlide);
+      const diff = activeIndex - targetIndex;
+
+      const [slidesBefore, slidesAfter] =
+        PhysicalSlide.getHalves_(carousel, targetSlide);
+
+      if (diff !== 0) {
+        const shiftFunction =
+          diff > 0 ?
+            () => slidesAfter.push(slidesBefore.shift()) :
+            () => slidesBefore.unshift(slidesAfter.pop());
+
+        const absDiff =
+          Math.min(Math.abs(diff), slidesBefore.length, slidesAfter.length);
+        for (let i = 0; i < absDiff; i++) {
+          shiftFunction();
+        }
       }
+
+      this.adjustSlidesBefore_(targetSlide, slidesBefore, adjustment);
+      this.adjustSlidesAfter_(targetSlide, slidesAfter, adjustment);
     }
-
-    const [slidesBeforeActive, slidesAfterActive] =
-      PhysicalSlide.getHalves_(carousel, activeSlide);
-    const reOrderedSlides =
-      [...slidesBeforeActive, activeSlide, ...slidesAfterActive];
-
-    const activeIndex = reOrderedSlides.indexOf(activeSlide);
-    const targetIndex = reOrderedSlides.indexOf(targetSlide);
-    const diff = activeIndex - targetIndex;
-
-    const [slidesBefore, slidesAfter] =
-      PhysicalSlide.getHalves_(carousel, targetSlide);
-
-    if (diff !== 0) {
-      const shiftFunction =
-        diff > 0 ?
-          () => slidesAfter.push(slidesBefore.shift()) :
-          () => slidesBefore.unshift(slidesAfter.pop());
-
-      const absDiff =
-        Math.min(Math.abs(diff), slidesBefore.length, slidesAfter.length);
-      for (let i = 0; i < absDiff; i++) {
-        shiftFunction();
-      }
-    }
-
-    this.adjustSlidesBefore_(targetSlide, slidesBefore, adjustment);
-    this.adjustSlidesAfter_(targetSlide, slidesAfter, adjustment);
   }
 
   private getSlideAdjustments_(
