@@ -79,15 +79,8 @@ class PhysicalSlide implements ITransition {
     this.initDraggableSlides_(carousel);
   }
 
-  private initActiveSlide_(
-    target: HTMLElement, carousel: ICarousel
-  ): void {
-    renderLoop.measure(() => {
-      const translation =
-        PhysicalSlide.getTranslationFromCenter_(target, carousel);
-      translate2d(target, translation);
-      this.adjustSplit_(carousel, target, translation);
-    });
+  private initActiveSlide_(target: HTMLElement, carousel: ICarousel): void {
+    renderLoop.measure(() => this.transition(target, carousel));
   }
 
   private initDraggableSlides_(carousel: ICarousel): void {
@@ -111,14 +104,6 @@ class PhysicalSlide implements ITransition {
             DragEnd,
             (event: DragEnd) => this.endInteraction_(event, carousel));
         });
-  }
-
-  private static getTranslationFromCenter_(
-    target: HTMLElement, carousel: ICarousel
-  ): Vector2d {
-    const distance =
-      getVisibleDistanceBetweenElementCenters(target, carousel.getContainer());
-    return new Vector2d(distance, 0);
   }
 
   public renderLoop(carousel: ICarousel): void {
