@@ -186,7 +186,7 @@ class RenderLoop {
    */
   public runLoop(currentTime: number = null): void {
     this.currentRun_ = currentTime || performance.now();
-    this.runStepsInOrder_(ANIMATION_FRAME_STEP_ORDER);
+    this.runStepsInOrder_(ALL_STEP_ORDER);
     this.lastRun_ = this.currentRun_;
   }
 
