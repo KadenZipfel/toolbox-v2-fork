@@ -3,6 +3,10 @@ import {applyScroll} from "../../utils/dom/position/apply-scroll";
 import {UserAgent} from "../../utils/user-agent/user-agent";
 import {IE} from "../../utils/user-agent/browser/ie";
 
+function eatEvent(e: Event) {
+  e.preventDefault();
+}
+
 const thirdEventListenerParam =
   UserAgent.getBrowser() === IE ?
     true : {passive: false, capture: true, once: false};
@@ -13,7 +17,10 @@ class JsScroll {
 
   constructor() {
     this.initializationCount_ = 0;
-    this.wheelHandler_ = (e) => this.scrollManually_(e);
+    this.wheelHandler_ = (e) => {
+      this.scrollManually_(e);
+      return false;
+    };
   }
 
   public init(): void {
@@ -28,8 +35,8 @@ class JsScroll {
   }
 
   private addEventListener_() {
-      window.addEventListener(
-        'wheel', this.wheelHandler_, thirdEventListenerParam);
+    window.addEventListener(
+      'wheel', this.wheelHandler_, thirdEventListenerParam);
   }
 
   private scrollManually_(e: WheelEvent): void {
